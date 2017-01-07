@@ -2,12 +2,16 @@
   "apiVersion": "extensions/v1beta1",
   "kind": "NetworkPolicy",
   "metadata": {
-    "name": "admin"
+    "annotations": {
+      "io.cilium.name": "k8s-app",
+      "io.cilium.parent": "io.cilium.k8s"
+    },
+    "name": "guestbook-redis"
   },
   "spec": {
     "podSelector": {
       "matchLabels": {
-        "kube-system": ""
+        "guestbook": "redis"
       }
     },
     "ingress": [
@@ -16,21 +20,14 @@
           {
             "podSelector": {
               "matchLabels": {
-                "io.cilium.reserved": "host"
+                "guestbook": "redis"
               }
             }
           },
           {
             "podSelector": {
               "matchLabels": {
-                "io.kubernetes.pod.namespace": "default"
-              }
-            }
-          },
-          {
-            "namespaceSelector": {
-              "matchLabels": {
-                "kube-system": ""
+                "guestbook": "web"
               }
             }
           }

@@ -3,15 +3,15 @@
   "kind": "NetworkPolicy",
   "metadata": {
     "annotations": {
-      "io.cilium.name": "lizards",
+      "io.cilium.name": "k8s",
       "io.cilium.parent": "io.cilium"
     },
-    "name": "lizards-policy-db"
+    "name": "dashboard"
   },
   "spec": {
     "podSelector": {
       "matchLabels": {
-        "db": ""
+        "k8s-app": "kubernetes-dashboard"
       }
     },
     "ingress": [
@@ -20,14 +20,7 @@
           {
             "podSelector": {
               "matchLabels": {
-                "web": ""
-              }
-            }
-          },
-          {
-            "namespaceSelector": {
-              "matchLabels": {
-                "default": ""
+                "io.cilium.reserved": "host"
               }
             }
           }
