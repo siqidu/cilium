@@ -34,6 +34,7 @@
 
 /* FIXME: Make configurable */
 #define CILIUM_LB_MAP_MAX_ENTRIES	65536
+#define CILIUM_LB_MAP_MAX_FE		256
 
 __BPF_MAP(cilium_lb6_reverse_nat, BPF_MAP_TYPE_HASH, 0,
 	  sizeof(__u16), sizeof(struct lb6_reverse_nat),
@@ -43,6 +44,10 @@ __BPF_MAP(cilium_lb6_services, BPF_MAP_TYPE_HASH, 0,
 	  sizeof(struct lb6_key), sizeof(struct lb6_service),
 	  PIN_GLOBAL_NS, CILIUM_LB_MAP_MAX_ENTRIES);
 
+__BPF_MAP(cilium_lb6_rr_seq, BPF_MAP_TYPE_HASH, 0,
+	  sizeof(struct lb6_key), sizeof(struct lb_sequence),
+	  PIN_GLOBAL_NS, CILIUM_LB_MAP_MAX_FE);
+
 __BPF_MAP(cilium_lb4_reverse_nat, BPF_MAP_TYPE_HASH, 0,
 	  sizeof(__u16), sizeof(struct lb4_reverse_nat),
 	  PIN_GLOBAL_NS, CILIUM_LB_MAP_MAX_ENTRIES);
@@ -50,6 +55,10 @@ __BPF_MAP(cilium_lb4_reverse_nat, BPF_MAP_TYPE_HASH, 0,
 __BPF_MAP(cilium_lb4_services, BPF_MAP_TYPE_HASH, 0,
 	  sizeof(struct lb4_key), sizeof(struct lb4_service),
 	  PIN_GLOBAL_NS, CILIUM_LB_MAP_MAX_ENTRIES);
+
+__BPF_MAP(cilium_lb4_rr_seq, BPF_MAP_TYPE_HASH, 0,
+	  sizeof(struct lb4_key), sizeof(struct lb_sequence),
+	  PIN_GLOBAL_NS, CILIUM_LB_MAP_MAX_FE);
 
 #define REV_NAT_F_TUPLE_SADDR 1
 

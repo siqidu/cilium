@@ -788,5 +788,6 @@ docker exec -i ab ab -t 30 -c 20 -v 1 "http://$SVC_IP4/" || {
 
 #cilium daemon config Debug=true DropNotification=true
 
+sleep 100000
 cleanup
 cilium -D policy delete io.cilium

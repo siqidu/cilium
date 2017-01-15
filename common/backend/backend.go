@@ -25,6 +25,8 @@ import (
 	"github.com/cilium/cilium/pkg/option"
 	"github.com/cilium/cilium/pkg/policy"
 
+	"github.com/cilium/cilium/bpf/lbmap"
+
 	"github.com/gorilla/websocket"
 )
 
@@ -78,7 +80,7 @@ type ui interface {
 }
 
 type LBBackend interface {
-	SVCAdd(fe types.L3n4AddrID, be []types.L3n4Addr, addRevNAT bool) error
+	SVCAdd(fe types.L3n4AddrID, be []types.LBBackendServer, addRevNAT bool) error
 	SVCDelete(feL3n4 types.L3n4Addr) error
 	SVCDeleteBySHA256Sum(feL3n4SHA256Sum string) error
 	SVCDeleteAll() error
@@ -90,6 +92,7 @@ type LBBackend interface {
 	RevNATDeleteAll() error
 	RevNATGet(id types.ServiceID) (*types.L3n4Addr, error)
 	RevNATDump() ([]types.L3n4AddrID, error)
+	WRRDump() ([]lbmap.ServiceRR, error)
 	SyncLBMap() error
 }
 

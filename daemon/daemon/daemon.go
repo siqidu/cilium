@@ -314,11 +314,17 @@ func (d *Daemon) init() error {
 		if _, err := lbmap.RevNat6Map.OpenOrCreate(); err != nil {
 			return err
 		}
+		if _, err := lbmap.RRSeq6Map.OpenOrCreate(); err != nil {
+                        return err
+                }
 		if d.conf.IPv4Enabled {
 			if _, err := lbmap.Service4Map.OpenOrCreate(); err != nil {
 				return err
 			}
 			if _, err := lbmap.RevNat4Map.OpenOrCreate(); err != nil {
+				return err
+			}
+			if _, err := lbmap.RRSeq4Map.OpenOrCreate(); err != nil {
 				return err
 			}
 		}

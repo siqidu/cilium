@@ -202,6 +202,7 @@ struct lb6_service {
 	__u16 port;
 	__u16 count;
 	__u16 rev_nat_index;
+	__u16 weight;
 } __attribute__((packed));
 
 struct lb6_reverse_nat {
@@ -220,11 +221,19 @@ struct lb4_service {
 	__u16 port;
 	__u16 count;
 	__u16 rev_nat_index;
+	__u16 weight;
 } __attribute__((packed));
 
 struct lb4_reverse_nat {
 	__be32 address;
 	__u16 port;
+} __attribute__((packed));
+
+#define LB_RR_MAX_SEQ 64
+struct lb_sequence {
+	int current;
+	int count;
+	__u16 idx[LB_RR_MAX_SEQ];
 } __attribute__((packed));
 
 struct ct_state {
