@@ -23,15 +23,23 @@ import (
 	"text/tabwriter"
 	"time"
 
+	clientapi "github.com/cilium/cilium/api/v1/client/restapi"
+	"github.com/cilium/cilium/api/v1/models"
+	"github.com/cilium/cilium/api/v1/server"
+	serverapi "github.com/cilium/cilium/api/v1/server/restapi"
 	common "github.com/cilium/cilium/common"
 	"github.com/cilium/cilium/common/addressing"
 	cnc "github.com/cilium/cilium/common/client"
 	"github.com/cilium/cilium/daemon/daemon"
 	s "github.com/cilium/cilium/daemon/server"
 	"github.com/cilium/cilium/pkg/bpf"
+	clientPkg "github.com/cilium/cilium/pkg/client"
 	"github.com/cilium/cilium/pkg/endpoint"
 	"github.com/cilium/cilium/pkg/labels"
 	"github.com/cilium/cilium/pkg/option"
+	loads "github.com/go-openapi/loads"
+	"github.com/go-openapi/runtime/middleware"
+	flags "github.com/jessevdk/go-flags"
 
 	etcdAPI "github.com/coreos/etcd/clientv3"
 	consulAPI "github.com/hashicorp/consul/api"
@@ -253,58 +261,76 @@ func init() {
 	}
 }
 
-func statusDaemon(ctx *cli.Context) {
-	var (
-		client *cnc.Client
-		err    error
-	)
-	if host := ctx.GlobalString("host"); host == "" {
-		client, err = cnc.NewDefaultClient()
-	} else {
-		client, err = cnc.NewClient(host, nil)
-	}
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error while creating cilium-client: %s\n", err)
-		os.Exit(1)
-	}
+var (
+	client *clientPkg.Client
+)
 
-	if sr, err := client.GlobalStatus(); err != nil {
-		fmt.Fprintf(os.Stderr, "Status: ERROR - Unable to reach out daemon: %s\n", err)
+func initClient(ctx *cli.Context) {
+	if cl, err := client.NewClient(ctx.GlobalString("host"), nil); err != nil {
+		fmt.Fprintf(os.Stderr, "Error while creating client: %s\n", err)
 		os.Exit(1)
 	} else {
+		client = cl
+	}
+}
+
+func statusDaemon(ctx *cli.Context) {
+	initClient(ctx)
+
+	if resp, err := client.Restapi.GetHealthz(nil); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: Unable to reach out daemon: %s\n", err)
+		os.Exit(1)
+	} else {
+		sr := resp.Payload
 		w := tabwriter.NewWriter(os.Stdout, 2, 0, 3, ' ', 0)
-		fmt.Fprintf(w, "KVStore:\t%s\n", sr.KVStore)
-		fmt.Fprintf(w, "Docker:\t%s\n", sr.Docker)
-		fmt.Fprintf(w, "Kubernetes:\t%s\n", sr.Kubernetes)
-		fmt.Fprintf(w, "Cilium:\t%s\n", sr.Cilium)
+		fmt.Fprintf(w, "KVStore:\t%s\n", sr.Kvstore.State)
+		fmt.Fprintf(w, "Docker:\t%s\n", sr.Docker.State)
+		fmt.Fprintf(w, "Kubernetes:\t%s\n", sr.Kubernetes.State)
+		fmt.Fprintf(w, "Cilium:\t%s\n", sr.Cilium.State)
 		w.Flush()
 
-		if sr.IPAMStatus != nil {
-			fmt.Printf("V4 addresses reserved:\n")
-			for _, ipv4 := range sr.IPAMStatus["4"] {
-				fmt.Printf(" %s\n", ipv4)
+		//		if sr.Ipamstatus != nil {
+		//			fmt.Printf("V4 addresses reserved:\n")
+		//			for _, ipv4 := range sr.IPAMStatus["4"] {
+		//				fmt.Printf(" %s\n", ipv4)
+		//
+		//			}
+		//			fmt.Printf("V6 addresses reserved:\n")
+		//			for _, ipv6 := range sr.IPAMStatus["6"] {
+		//				fmt.Printf(" %s\n", ipv6)
+		//			}
+		//			w.Flush()
+		//		}
 
-			}
-			fmt.Printf("V6 addresses reserved:\n")
-			for _, ipv6 := range sr.IPAMStatus["6"] {
-				fmt.Printf(" %s\n", ipv6)
-			}
-			w.Flush()
+		if sr.Cilium.State != models.StatusStateOk {
+			os.Exit(1)
+		} else {
+			os.Exit(0)
 		}
-
-		os.Exit(int(sr.Cilium.Code))
 	}
 
 }
 
+func dumpConfig(Opts map[string]string) {
+	opts := []string{}
+	for k := range Opts {
+		opts = append(opts, k)
+	}
+	sort.Strings(opts)
+
+	for _, k := range opts {
+		text := common.Green("Enabled")
+
+		if !Opts[k] {
+			text = common.Red("Disabled")
+		}
+
+		fmt.Printf("%-24s %s\n", k, text)
+	}
+}
+
 func configDaemon(ctx *cli.Context) {
-	var (
-		client *cnc.Client
-		err    error
-	)
-
 	first := ctx.Args().First()
-
 	if first == "list" {
 		for k, s := range daemon.DaemonOptionLibrary {
 			fmt.Printf("%-24s %s\n", k, s.Description)
@@ -312,20 +338,11 @@ func configDaemon(ctx *cli.Context) {
 		return
 	}
 
-	if host := ctx.GlobalString("host"); host == "" {
-		client, err = cnc.NewDefaultClient()
-	} else {
-		client, err = cnc.NewClient(host, nil)
-	}
+	initClient(ctx)
 
+	resp, err := client.Restapi.GetConfig(nil)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error while creating cilium-client: %s\n", err)
-		os.Exit(1)
-	}
-
-	res, err := client.Ping()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to reach daemon: %s\n", err)
+		fmt.Fprintf(os.Stderr, "Error while retrieving configuration: %s", err)
 		os.Exit(1)
 	}
 
@@ -335,13 +352,13 @@ func configDaemon(ctx *cli.Context) {
 	}
 
 	opts := ctx.Args()
-
 	if len(opts) == 0 {
-		res.Opts.Dump()
+		dumpConfig(opts.Immutable)
+		dumpConfig(opts.Mutable)
 		return
 	}
 
-	dOpts := make(option.OptionMap, len(opts))
+	dOpts := make(models.Configuration, len(opts))
 
 	for k := range opts {
 		name, value, err := option.ParseOption(opts[k], &daemon.DaemonOptionLibrary)
@@ -352,7 +369,7 @@ func configDaemon(ctx *cli.Context) {
 
 		dOpts[name] = value
 
-		err = client.Update(dOpts)
+		err = client.Restapi.PutConfig(nil)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Unable to update daemon: %s\n", err)
 			os.Exit(1)
@@ -498,10 +515,24 @@ func run(cli *cli.Context) {
 		log.Info("UI is disabled")
 	}
 
-	server, err := s.NewServer(socketPath, d)
+	swaggerSpec, err := loads.Analyzed(server.SwaggerJSON, "")
 	if err != nil {
-		log.Fatalf("Error while creating daemon: %s", err)
+		log.Fatal(err)
 	}
-	defer server.Stop()
-	server.Start()
+
+	api := serverapi.NewCiliumAPI(swaggerSpec)
+	api.GetHealthzHandler = serverapi.GetHealthzHandlerFunc(func(params serverapi.GetHealthzParams) middleware.Responder {
+		return d.GetHealthz(params)
+	})
+
+	server := server.NewServer(api)
+	server.EnabledListeners = []string{"http", "unix"}
+	server.SocketPath = flags.Filename(socketPath)
+	defer server.Shutdown()
+
+	server.ConfigureAPI()
+
+	if err := server.Serve(); err != nil {
+		log.Fatal(err)
+	}
 }

@@ -1,0 +1,157 @@
+{
+        "swagger": "2.0",
+        "info": {
+                "title": "Cilium API",
+                "description": "Cilium",
+                "version": "unversioned"
+        },
+        "schemes": [
+                "http"
+	],
+        "x-schemes": [
+		"unix"
+        ],
+        "basePath": "/v1",
+        "produces": [
+                "application/json"
+        ],
+        "paths": {
+                "/healthz": {
+                        "get": {
+                                "summary": "Retrieve status of daemon",
+                                "description": "Foo",
+                                "responses": {
+                                        "200": {
+                                                "description": "Status information of local daemon",
+                                                "schema": {
+                                                        "$ref": "#/definitions/StatusResponse"
+                                                }
+                                        },
+                                        "default": {
+                                                "description": "Unexpected error",
+                                                "schema": {
+                                                        "$ref": "#/definitions/ErrorModel"
+                                                }
+                                        }
+                                }
+                        }
+                },
+                "/config": {
+			"get": {
+				"summary": "Retrieve daemon configuration",
+				"responses": {
+					"200": {
+                                                "description": "Daemon configuration",
+                                                "schema": {
+                                                        "$ref": "#/definitions/ConfigurationResponse"
+                                                }
+					},
+                                        "default": {
+                                                "description": "Unexpected error",
+                                                "schema": {
+                                                        "$ref": "#/definitions/ErrorModel"
+                                                }
+                                        }
+				}
+			},
+                        "put": {
+                                "summary": "Update daemon configuration",
+				"parameters": {
+					"configuration": {
+						"in": "body",
+						"required": "true",
+                                                "schema": {
+                                                        "$ref": "#/definitions/Configuration"
+                                                }
+					}
+				},
+                                "responses": {
+                                        "default": {
+                                                "description": "Unexpected error",
+                                                "schema": {
+                                                        "$ref": "#/definitions/ErrorModel"
+                                                }
+                                        }
+                                }
+                        }
+                }
+        },
+        "definitions": {
+                "StatusResponse": {
+                        "description": "Health and status information of daemon",
+                        "properties": {
+                                "kvstore": {
+                                        "description": "Status of key/value store",
+                                        "$ref": "#/definitions/Status"
+                                },
+                                "docker": {
+                                        "description": "Status of docker runtime",
+                                        "$ref": "#/definitions/Status"
+                                },
+                                "kubernetes": {
+                                        "$ref": "#/definitions/Status"
+                                },
+                                "logstash": {
+                                        "$ref": "#/definitions/Status"
+                                },
+                                "cilium": {
+                                        "$ref": "#/definitions/Status"
+                                }
+                        }
+                },
+                "Status": {
+                        "description": "Individual status of a daemon component",
+                        "type": "object",
+                        "properties": {
+                                "state": {
+                                        "type": "string",
+                                        "description": "Overal state of component",
+					"enum": [
+						"Ok",
+						"Warning",
+						"Failure",
+						"Disabled"
+					]
+                                },
+                                "msg": {
+                                        "type": "string",
+                                        "description": "Human readable status message"
+                                }
+                        }
+                },
+		"ConfigurationResponse": {
+                        "description": "Response to a configuration retrieval request",
+			"type": "object",
+			"properties": {
+				"mutable": {
+                                        "description": "Changeable configuration",
+                                        "$ref": "#/definitions/ConfigurationMap"
+				},
+				"immutable": {
+                                        "description": "Immutable configuration (read-only)",
+                                        "$ref": "#/definitions/ConfigurationMap"
+				}
+			}
+		},
+		"ConfigurationMap": {
+                        "description": "List of configuration settings",
+			"type": "object",
+			"additionalProperties": {
+				"type": "string"
+			}
+		},
+                "ErrorModel": {
+                        "type": "object",
+                        "required": [ "code", "message" ],
+                        "properties": {
+                                "code": {
+                                        "type": "integer",
+                                        "format": "int32"
+                                },
+                                "message": {
+                                        "type": "string"
+                                }
+                        }
+                }
+        }
+}

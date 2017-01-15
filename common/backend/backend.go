@@ -68,7 +68,6 @@ type control interface {
 	Ping() (*types.PingResponse, error)
 	Update(opts option.OptionMap) error
 	SyncState(path string, clean bool) error
-	GlobalStatus() (*endpoint.StatusResponse, error)
 }
 
 type ui interface {

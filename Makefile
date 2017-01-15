@@ -86,5 +86,10 @@ build-rpm:
 runtime-tests:
 	$(MAKE) -C tests runtime-tests
 
+generate-api:
+	swagger generate server -t api/v1 -f api/v1/openapi.json -a restapi -s server
+	swagger generate client -t api/v1 -f api/v1/openapi.json -a restapi
+	rm -r api/v1/cmd/
+
 .PHONY: force
 force :;
