@@ -231,8 +231,8 @@ func cliDumpWrr(ctx *cli.Context) {
         }
 
 	wrrs := map[string]string{}
-	for i, v := range dump {
-		str := fmt.Sprintf("%d,%s => %d, %v", i+1, v.FE.String(), v.SEQ.Count, v.SEQ.Idx)
+	for _, v := range dump {
+		str := fmt.Sprintf("(current %d, count %d) seq%v",v.SEQ.Current, v.SEQ.Count, v.SEQ.Idx[:v.SEQ.Count])
 		wrrs[v.FE.String()] = str
 	}
 
@@ -244,7 +244,7 @@ func cliDumpWrr(ctx *cli.Context) {
 
 	for _, wrrKey := range wrrKeys {
 		fmt.Printf("%s =>\n", wrrKey)
-		fmt.Printf("%s\n", wrrs[wrrKey])
+		fmt.Printf("\t\t%s\n", wrrs[wrrKey])
 	}
 }
 

@@ -351,12 +351,8 @@ func (d *Daemon) WRRDump() ([]lbmap.ServiceRR, error) {
 		if seq == nil {
 			return nil, fmt.Errorf("unable to generate weighted round robin seq for %+v with value %+v", u.FE, weights)
 		}
-		l3n4Addr, err := types.NewL3n4Addr(u.FE.Protocol, u.FE.IP, u.FE.Port)
-		if err != nil {
-			return nil, err
-		}
 		svcrr := lbmap.ServiceRR{
-			FE: *l3n4Addr,
+			FE: u.FE.L3n4Addr,
 			SEQ: *seq,
 		}
                 dump = append(dump, svcrr)
