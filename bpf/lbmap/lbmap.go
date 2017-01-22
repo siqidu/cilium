@@ -99,8 +99,8 @@ type ServiceValue interface {
 }
 
 type ServiceRRSeq struct {
-        Current int32
-        Count int32
+        Current uint64
+        Count uint16
         Idx [maxSeq]uint16
 }
 func (s ServiceRRSeq) GetValuePtr() unsafe.Pointer { return unsafe.Pointer(&s) }
@@ -263,7 +263,7 @@ func GenerateWrrSeq(weights []uint16) *ServiceRRSeq {
 		seq = append(seq, next(&state, n, sum, weights))
 	}
 	copy(svcRRSeq.Idx[:], seq)
-	svcRRSeq.Count = int32(len(seq))
+	svcRRSeq.Count = uint16(len(seq))
 	svcRRSeq.Current = 0
 	return &svcRRSeq
 }
@@ -313,6 +313,7 @@ func AddSVC2BPFMap(fe ServiceKey, besValues []ServiceValue, addRevNAT bool, revN
 	fe.SetBackend(0)
 	zeroValue := fe.NewValue().(ServiceValue)
 	zeroValue.SetCount(nSvcs - 1)
+	zeroValue.SetWeight(uint16(len(weights)))
 
 	err = UpdateService(fe, zeroValue)
 	if err != nil {

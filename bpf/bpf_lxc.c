@@ -112,6 +112,8 @@ static inline int ipv6_l3_from_lxc(struct __sk_buff *skb,
 	struct lb6_key key = {};
 	struct ct_state ct_state_new = {};
 	struct ct_state ct_state_reply = {};
+	struct ct_state ct_state_prexlate = {};
+	__u16 slave;
 
 	if (unlikely(!valid_src_mac(eth)))
 		return DROP_INVALID_SMAC;
@@ -144,22 +146,36 @@ static inline int ipv6_l3_from_lxc(struct __sk_buff *skb,
 			return ret;
 	}
 
-	ct_state_new.orig_dport = key.dport;
-
 	/*
+	 * Do a pre translate lookup to see if this connection is already being
+	 * load balanced and if so we can skip lb6_lookup_service, else
 	 * Check if the destination address is among the address that should be
 	 * load balanced. This operation is performed before we go through the
 	 * connection tracker to allow storing the reverse nat index in the CT
 	 * entry for destination endpoints where we can't encode the state in the
 	 * address.
 	 */
-	if ((svc = lb6_lookup_service(skb, &key)) != NULL) {
-		ret = lb6_local(skb, l3_off, l4_off, &csum_off, &key, tuple, svc,
-				&ct_state_new);
+	ret = ct_lookup6(&CT_MAP6, tuple, skb, l4_off, SECLABEL, 0, &ct_state_prexlate);
+	if (ret != CT_NEW && ct_state_prexlate.lb_slave_index) {
+		slave = ct_state_prexlate.lb_slave_index;
+		goto load_balance;
+	} else if ((svc = lb6_lookup_service(skb, &key)) != NULL) {
+		slave = lb6_select_slave(skb, &key, svc->count, svc->weight);
+		ct_state_prexlate.lb_slave_index = slave;
+		ret = ct_create6(&CT_MAP6, tuple, skb, 0, &ct_state_prexlate);
 		if (IS_ERR(ret))
 			return ret;
+		goto load_balance;
+	} else {
+		goto skip_service_lookup;
 	}
 
+load_balance:
+	ct_state_new.orig_dport = key.dport;
+	ret = lb6_local(skb, l3_off, l4_off, &csum_off, &key, tuple,
+			&ct_state_new, slave);
+	if (IS_ERR(ret))
+		return ret;
 skip_service_lookup:
 	/* Port reverse mapping can never happen when we balanced to a service */
 	ret = map_lxc_out(skb, l4_off, tuple->nexthdr);
@@ -352,6 +368,8 @@ static inline int handle_ipv4(struct __sk_buff *skb)
 	struct lb4_key key = {};
 	struct ct_state ct_state_new = {};
 	struct ct_state ct_state_reply = {};
+	struct ct_state ct_state_prexlate = {};
+	__u16 slave;
 
 	if (data + sizeof(*ip4) + ETH_HLEN > data_end)
 		return DROP_INVALID;
@@ -388,15 +406,37 @@ static inline int handle_ipv4(struct __sk_buff *skb)
 			return ret;
 	}
 
-	ct_state_new.orig_dport = key.dport;
-
-	if ((svc = lb4_lookup_service(skb, &key)) != NULL) {
-		ret = lb4_local(skb, l3_off, l4_off, &csum_off,
-				&key, &tuple, svc, &ct_state_new, ip4->saddr);
+	/*
+	 * Do a pre translate lookup to see if this connection is already being
+	 * load balanced and if so we can skip lb6_lookup_service, else
+	 * Check if the destination address is among the address that should be
+	 * load balanced. This operation is performed before we go through the
+	 * connection tracker to allow storing the reverse nat index in the CT
+	 * entry for destination endpoints where we can't encode the state in the
+	 * address.
+	 */
+	ret = ct_lookup4(&CT_MAP4, &tuple, skb, l4_off, SECLABEL, 0,
+			 &ct_state_prexlate);
+	if (ret != CT_NEW && ct_state_prexlate.lb_slave_index) {
+		slave = ct_state_prexlate.lb_slave_index - 1;
+		goto load_balance;
+	} else if ((svc = lb4_lookup_service(skb, &key)) != NULL) {
+		slave = lb4_select_slave(skb, &key, svc->count, svc->weight);
+		ct_state_prexlate.lb_slave_index = slave + 1;
+		ret = ct_create4(&CT_MAP4, &tuple, skb, 0, &ct_state_prexlate);
 		if (IS_ERR(ret))
 			return ret;
+		goto load_balance;
+	} else {
+		goto skip_service_lookup;
 	}
 
+load_balance:
+	ct_state_new.orig_dport = key.dport;
+	ret = lb4_local(skb, l3_off, l4_off, &csum_off,
+			&key, &tuple, &ct_state_new, ip4->saddr, slave);
+	if (IS_ERR(ret))
+		return ret;
 skip_service_lookup:
 	ret = map_lxc_out(skb, l4_off, tuple.nexthdr);
 	if (IS_ERR(ret))

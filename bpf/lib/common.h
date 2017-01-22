@@ -189,6 +189,7 @@ struct ct_entry {
 	      lb_loopback:1,
 	      reserve:12;
 	__u16 rev_nat_index;
+	__u16 lb_slave_index;
 };
 
 struct lb6_key {
@@ -231,8 +232,8 @@ struct lb4_reverse_nat {
 
 #define LB_RR_MAX_SEQ 64
 struct lb_sequence {
-	int current;
-	int count;
+	__u64 current;
+	__u16 count;
 	__u16 idx[LB_RR_MAX_SEQ];
 } __attribute__((packed));
 
@@ -241,6 +242,7 @@ struct ct_state {
 	__u16 loopback:1,
 	      reserved:15;
 	__u16 orig_dport;
+	__u16 lb_slave_index;
 	__be32 addr;
 };
 

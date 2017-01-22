@@ -74,6 +74,58 @@ static inline int lb_select_slave(struct __sk_buff *skb, __u16 count)
 	return slave;
 }
 
+static inline int lb6_next_rr_seq(struct __sk_buff *skb, struct lb6_key *key)
+{
+	struct lb_sequence *seq;
+
+	cilium_trace(skb, DBG_LB6_LOOKUP_RR_SEQ, key->address.p4, key->dport);
+	seq = map_lookup_elem(&cilium_lb6_rr_seq, key);
+	if (seq != NULL && seq->count) {
+		cilium_trace(skb, DBG_LB6_LOOKUP_RR_SEQ_SUCCESS, seq->current, seq->count);
+		/* Slave 0 is reserved for the master slot */
+		return seq->idx[__sync_fetch_and_add(&seq->current, 1) % seq->count] + 1;
+	}
+	return -1;
+}
+
+static inline int lb6_select_slave(struct __sk_buff *skb, struct lb6_key *key,
+				   __u16 count, __u16 weight)
+{
+	int slave = -1;
+
+	if (weight)
+		slave = lb6_next_rr_seq(skb, key);
+	if (slave == -1)
+		slave = lb_select_slave(skb, count);
+	return slave;
+}
+
+static inline int lb4_next_rr_seq(struct __sk_buff *skb, struct lb4_key *key)
+{
+	struct lb_sequence *seq;
+
+	cilium_trace(skb, DBG_LB4_LOOKUP_RR_SEQ, key->address, key->dport);
+	seq = map_lookup_elem(&cilium_lb4_rr_seq, key);
+	if (seq != NULL && seq->count) {
+		cilium_trace(skb, DBG_LB4_LOOKUP_RR_SEQ_SUCCESS, seq->current, seq->count);
+		/* Slave 0 is reserved for the master slot */
+		return seq->idx[__sync_fetch_and_add(&seq->current, 1) % seq->count] + 1;
+	}
+	return -1;
+}
+
+static inline int lb4_select_slave(struct __sk_buff *skb, struct lb4_key *key,
+				   __u16 count, __u16 weight)
+{
+	int slave = -1;
+
+	if (weight)
+		slave = lb4_next_rr_seq(skb, key);
+	if (slave == -1)
+		slave = lb_select_slave(skb, count);
+	return slave;
+}
+
 static inline int __inline__ extract_l4_port(struct __sk_buff *skb, __u8 nexthdr,
 					     int l4_off, __u16 *port)
 {
@@ -307,12 +359,11 @@ static inline int __inline__ lb6_xlate(struct __sk_buff *skb, union v6addr *new_
 
 static inline int __inline__ lb6_local(struct __sk_buff *skb, int l3_off, int l4_off,
 				       struct csum_offset *csum_off, struct lb6_key *key,
-				       struct ipv6_ct_tuple *tuple, struct lb6_service *svc,
-				       struct ct_state *state)
+				       struct ipv6_ct_tuple *tuple, struct ct_state *state,
+				       __u16 slave)
 {
-	__u16 slave;
+	struct lb6_service *svc;
 
-	slave = lb_select_slave(skb, svc->count);
 	if (!(svc = lb6_lookup_slave(skb, key, slave)))
 		return DROP_NO_SERVICE;
 
@@ -541,13 +592,12 @@ lb4_xlate(struct __sk_buff *skb, __be32 *new_daddr, __be32 *new_saddr,
 
 static inline int __inline__ lb4_local(struct __sk_buff *skb, int l3_off, int l4_off,
 				       struct csum_offset *csum_off, struct lb4_key *key,
-				       struct ipv4_ct_tuple *tuple, struct lb4_service *svc,
-				       struct ct_state *state, __be32 saddr)
+				       struct ipv4_ct_tuple *tuple, struct ct_state *state,
+				       __be32 saddr, __u16 slave)
 {
 	__be32 new_saddr = 0, new_daddr;
-	__u16 slave;
+	struct lb4_service *svc;
 
-	slave = lb_select_slave(skb, svc->count);
 	if (!(svc = lb4_lookup_slave(skb, key, slave)))
 		return DROP_NO_SERVICE;
 
