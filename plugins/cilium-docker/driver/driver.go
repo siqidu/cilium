@@ -61,7 +61,7 @@ func NewDriver(ctx *cli.Context) (Driver, error) {
 		log.Fatalf("Error while starting cilium-client: %s", err)
 	}
 
-	for tries := 0; tries < 10; tries++ {
+	for tries := 0; tries < 20; tries++ {
 		if res, err := c.Ping(); err != nil {
 			if tries == 9 {
 				log.Fatalf("Unable to reach cilium daemon: %s", err)
