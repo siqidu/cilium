@@ -27,6 +27,7 @@ DEFINE_U32(POLICY_VERDICT_LOG_FILTER, 0xffff);
 #define POLICY_VERDICT_LOG_FILTER fetch_u32(POLICY_VERDICT_LOG_FILTER)
 
 #define POLICY_MAP test_cilium_policy_65535
+#define POLICY_DENY_MAP test_cilium_policy_deny_65535
 
 #ifndef SKIP_DEBUG
 #define DEBUG

@@ -190,6 +190,18 @@ policy_can_access_ingress(struct __ctx_buff *ctx, __u32 srcID, __u32 dstID,
 {
 	int ret;
 
+	ret = __policy_can_access(&POLICY_DENY_MAP, ctx, dstID, srcID, dport,
+				  proto, CT_INGRESS, is_untracked_fragment,
+				  match_type);
+	/** Since we use the same logic "policy_can_access" for policy denies, it
+	 *  means that ret >= CTX_ACT_OK if the identities exist in the deny map,
+	 *  and so we should drop the packets
+	 */
+	if (ret >= CTX_ACT_OK) {
+		cilium_dbg(ctx, DBG_POLICY_DENIED, srcID, dstID);
+		return DROP_POLICY_DENY;
+	}
+
 	ret = __policy_can_access(&POLICY_MAP, ctx, dstID, srcID, dport,
 				  proto, CT_INGRESS, is_untracked_fragment,
 				  match_type);
@@ -229,6 +241,17 @@ policy_can_egress(struct __ctx_buff *ctx, __u32 srcID, __u32 dstID,
 	if (srcID != HOST_ID && is_encap(dport, proto))
 		return DROP_ENCAP_PROHIBITED;
 #endif
+	ret = __policy_can_access(&POLICY_DENY_MAP, ctx, srcID, dstID, dport, proto,
+				  CT_EGRESS, false, match_type);
+	/** Since we use the same logic "policy_can_access" for policy denies, it
+	 *  means that ret >= CTX_ACT_OK if the identities exist in the deny map,
+	 *  and so we should drop the packets
+	 */
+	if (ret >= 0) {
+		cilium_dbg(ctx, DBG_POLICY_DENIED, srcID, dstID);
+		return DROP_POLICY_DENY;
+	}
+
 	ret = __policy_can_access(&POLICY_MAP, ctx, srcID, dstID, dport, proto,
 				  CT_EGRESS, false, match_type);
 	if (ret >= 0)

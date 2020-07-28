@@ -45,6 +45,7 @@ var (
 
 	elfMapPrefixes = []string{
 		policymap.MapName,
+		policymap.DenyMapName,
 		callsmap.MapName,
 	}
 	elfCtMapPrefixes = []string{
