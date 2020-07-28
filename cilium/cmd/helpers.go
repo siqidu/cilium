@@ -1,4 +1,4 @@
-// Copyright 2016-2019 Authors of Cilium
+// Copyright 2016-2020 Authors of Cilium
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -244,7 +244,7 @@ func parsePolicyUpdateArgs(cmd *cobra.Command, args []string) *PolicyUpdateArgs 
 	return pa
 }
 
-func endpointToPolicyMapPath(endpointID string) (string, error) {
+func toPolicyMapPath(policyMapName, endpointID string) (string, error) {
 	if endpointID == "" {
 		return "", fmt.Errorf("Need ID or label")
 	}
@@ -252,15 +252,23 @@ func endpointToPolicyMapPath(endpointID string) (string, error) {
 	var mapName string
 	id, err := strconv.Atoi(endpointID)
 	if err == nil {
-		mapName = bpf.LocalMapName(policymap.MapName, uint16(id))
+		mapName = bpf.LocalMapName(policyMapName, uint16(id))
 	} else if numericIdentity := identity.GetReservedID(endpointID); numericIdentity != identity.IdentityUnknown {
 		mapSuffix := "reserved_" + strconv.FormatUint(uint64(numericIdentity), 10)
-		mapName = fmt.Sprintf("%s%s", policymap.MapName, mapSuffix)
+		mapName = fmt.Sprintf("%s%s", policyMapName, mapSuffix)
 	} else {
 		return "", err
 	}
 
 	return bpf.MapPath(mapName), nil
+}
+
+func endpointToPolicyMapPath(endpointID string) (string, error) {
+	return toPolicyMapPath(policymap.MapName, endpointID)
+}
+
+func endpointToDenyPolicyMapPath(endpointID string) (string, error) {
+	return toPolicyMapPath(policymap.DenyMapName, endpointID)
 }
 
 func parsePolicyUpdateArgsHelper(args []string) (*PolicyUpdateArgs, error) {

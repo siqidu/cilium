@@ -1,4 +1,4 @@
-// Copyright 2017-2019 Authors of Cilium
+// Copyright 2017-2020 Authors of Cilium
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -40,6 +40,7 @@ import (
 var (
 	printIDs bool
 	allList  bool
+	deny     bool
 )
 
 // bpfPolicyListCmd represents the bpf_policy_list command
@@ -61,6 +62,7 @@ func init() {
 	bpfPolicyCmd.AddCommand(bpfPolicyListCmd)
 	bpfPolicyListCmd.Flags().BoolVarP(&printIDs, "numeric", "n", false, "Do not resolve IDs")
 	bpfPolicyListCmd.Flags().BoolVarP(&allList, "all", "", false, "Dump all policy maps")
+	bpfPolicyListCmd.Flags().BoolVarP(&deny, "deny", "", true, "Dump deny policy maps as well as allowed policy maps")
 	command.AddJSONOutput(bpfPolicyListCmd)
 }
 
@@ -83,11 +85,24 @@ func listAllMaps() {
 }
 
 func listMap(args []string) {
-	lbl := args[0]
+	epID := args[0]
 
-	mapPath, err := endpointToPolicyMapPath(lbl)
+	// Print DENY MAP first since it's the same logic we apply in the datapath,
+	// we deny packets first if the identity is in the DENY MAP.
+	if deny {
+		fmt.Println("POLICY DENY MAP")
+		denyMapPath, err := endpointToDenyPolicyMapPath(epID)
+		if err != nil {
+			Fatalf("Failed to parse endpoint ID %q", epID)
+		}
+		dumpMap(denyMapPath)
+		fmt.Printf("\n")
+	}
+
+	fmt.Println("POLICY ALLOW MAP")
+	mapPath, err := endpointToPolicyMapPath(epID)
 	if err != nil {
-		Fatalf("Failed to parse endpointID %q", lbl)
+		Fatalf("Failed to parse endpoint ID %q", epID)
 	}
 	dumpMap(mapPath)
 }

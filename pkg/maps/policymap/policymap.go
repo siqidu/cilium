@@ -36,6 +36,11 @@ const (
 	// with that identity on that port for that direction.
 	MapName = "cilium_policy_"
 
+	// DenyMapName is the prefix for endpoint-specific policy maps which map
+	// identity+ports+direction to whether the policy denies communication
+	// with that identity on that port for that direction.
+	DenyMapName = "cilium_policy_deny_"
+
 	// PolicyCallMaxEntries is the upper limit of entries in the program
 	// array for the tail calls to jump into the endpoint specific policy
 	// programs. This number *MUST* be identical to the maximum endpoint ID.

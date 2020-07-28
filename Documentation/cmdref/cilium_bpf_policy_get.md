@@ -16,6 +16,7 @@ cilium bpf policy get [flags]
 
 ```
       --all             Dump all policy maps
+      --deny            Dump deny policy maps as well as allowed policy maps (default true)
   -h, --help            help for get
   -n, --numeric         Do not resolve IDs
   -o, --output string   json| jsonpath='{}'
