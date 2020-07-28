@@ -2101,14 +2101,34 @@ func init() {
           "description": "Build number of calculated policy in use",
           "type": "integer"
         },
+        "cidr-deny-policy": {
+          "$ref": "#/definitions/CIDRPolicy"
+        },
         "cidr-policy": {
           "$ref": "#/definitions/CIDRPolicy"
+        },
+        "denied-egress-identities": {
+          "description": "List of identities to which this endpoint is not allowed to communicate\n",
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "denied-ingress-identities": {
+          "description": "List of identities not allowed to communicate to this endpoint\n",
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
         },
         "id": {
           "description": "Own identity of endpoint",
           "type": "integer"
         },
         "l4": {
+          "$ref": "#/definitions/L4Policy"
+        },
+        "l4-deny": {
           "$ref": "#/definitions/L4Policy"
         },
         "policy-enabled": {
@@ -5846,14 +5866,34 @@ func init() {
           "description": "Build number of calculated policy in use",
           "type": "integer"
         },
+        "cidr-deny-policy": {
+          "$ref": "#/definitions/CIDRPolicy"
+        },
         "cidr-policy": {
           "$ref": "#/definitions/CIDRPolicy"
+        },
+        "denied-egress-identities": {
+          "description": "List of identities to which this endpoint is not allowed to communicate\n",
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "denied-ingress-identities": {
+          "description": "List of identities not allowed to communicate to this endpoint\n",
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
         },
         "id": {
           "description": "Own identity of endpoint",
           "type": "integer"
         },
         "l4": {
+          "$ref": "#/definitions/L4Policy"
+        },
+        "l4-deny": {
           "$ref": "#/definitions/L4Policy"
         },
         "policy-enabled": {

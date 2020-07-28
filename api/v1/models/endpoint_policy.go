@@ -32,14 +32,28 @@ type EndpointPolicy struct {
 	// Build number of calculated policy in use
 	Build int64 `json:"build,omitempty"`
 
+	// cidr deny policy
+	CidrDenyPolicy *CIDRPolicy `json:"cidr-deny-policy,omitempty"`
+
 	// cidr policy
 	CidrPolicy *CIDRPolicy `json:"cidr-policy,omitempty"`
+
+	// List of identities to which this endpoint is not allowed to communicate
+	//
+	DeniedEgressIdentities []int64 `json:"denied-egress-identities"`
+
+	// List of identities not allowed to communicate to this endpoint
+	//
+	DeniedIngressIdentities []int64 `json:"denied-ingress-identities"`
 
 	// Own identity of endpoint
 	ID int64 `json:"id,omitempty"`
 
 	// l4
 	L4 *L4Policy `json:"l4,omitempty"`
+
+	// l4 deny
+	L4Deny *L4Policy `json:"l4-deny,omitempty"`
 
 	// Whether policy enforcement is enabled (ingress, egress, both or none)
 	PolicyEnabled EndpointPolicyEnabled `json:"policy-enabled,omitempty"`
@@ -52,11 +66,19 @@ type EndpointPolicy struct {
 func (m *EndpointPolicy) Validate(formats strfmt.Registry) error {
 	var res []error
 
+	if err := m.validateCidrDenyPolicy(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateCidrPolicy(formats); err != nil {
 		res = append(res, err)
 	}
 
 	if err := m.validateL4(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateL4Deny(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -67,6 +89,24 @@ func (m *EndpointPolicy) Validate(formats strfmt.Registry) error {
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+func (m *EndpointPolicy) validateCidrDenyPolicy(formats strfmt.Registry) error {
+
+	if swag.IsZero(m.CidrDenyPolicy) { // not required
+		return nil
+	}
+
+	if m.CidrDenyPolicy != nil {
+		if err := m.CidrDenyPolicy.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("cidr-deny-policy")
+			}
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -98,6 +138,24 @@ func (m *EndpointPolicy) validateL4(formats strfmt.Registry) error {
 		if err := m.L4.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("l4")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *EndpointPolicy) validateL4Deny(formats strfmt.Registry) error {
+
+	if swag.IsZero(m.L4Deny) { // not required
+		return nil
+	}
+
+	if m.L4Deny != nil {
+		if err := m.L4Deny.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("l4-deny")
 			}
 			return err
 		}

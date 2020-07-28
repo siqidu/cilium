@@ -243,13 +243,33 @@ func (in *EndpointPolicy) DeepCopyInto(out *EndpointPolicy) {
 		*out = make([]int64, len(*in))
 		copy(*out, *in)
 	}
+	if in.CidrDenyPolicy != nil {
+		in, out := &in.CidrDenyPolicy, &out.CidrDenyPolicy
+		*out = new(CIDRPolicy)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.CidrPolicy != nil {
 		in, out := &in.CidrPolicy, &out.CidrPolicy
 		*out = new(CIDRPolicy)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.DeniedEgressIdentities != nil {
+		in, out := &in.DeniedEgressIdentities, &out.DeniedEgressIdentities
+		*out = make([]int64, len(*in))
+		copy(*out, *in)
+	}
+	if in.DeniedIngressIdentities != nil {
+		in, out := &in.DeniedIngressIdentities, &out.DeniedIngressIdentities
+		*out = make([]int64, len(*in))
+		copy(*out, *in)
+	}
 	if in.L4 != nil {
 		in, out := &in.L4, &out.L4
+		*out = new(L4Policy)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.L4Deny != nil {
+		in, out := &in.L4Deny, &out.L4Deny
 		*out = new(L4Policy)
 		(*in).DeepCopyInto(*out)
 	}
