@@ -1226,16 +1226,33 @@ func (e *Endpoint) syncPolicyMap() error {
 			errors++
 		}
 
-		// Delete policy keys present in the realized state, but not present in the desired state
-		for keyToDelete := range e.realizedPolicy.PolicyMapState {
-			// If key that is in realized state is not in desired state, just remove it.
-			if _, ok := e.desiredPolicy.PolicyMapState[keyToDelete]; !ok {
-				if deleted, err := deletePolicyKey(e.policyMap, e.realizedPolicy.PolicyMapState, e.desiredPolicy.PolicyMapState, keyToDelete, false, nil); !deleted {
-					e.getLogger().WithError(err).Error("Failed to delete PolicyMap key")
-					errors++
+		syncPolicy := func(
+			policyMapName string,
+			policyMap *policymap.PolicyMap,
+			realizedPolicy, desiredPolicy policy.MapState,
+		) {
+			// Delete policy keys present in the realized state, but not present in the desired state
+			for keyToDelete := range realizedPolicy {
+				// If key that is in realized state is not in desired state, just remove it.
+				if _, ok := desiredPolicy[keyToDelete]; !ok {
+					if deleted, err := deletePolicyKey(
+						e.policyMap,
+						realizedPolicy,
+						desiredPolicy,
+						keyToDelete,
+						false,
+						nil,
+					); !deleted {
+						e.getLogger().WithError(err).
+							Errorf("Failed to delete %s key", policyMapName)
+						errors++
+					}
 				}
 			}
 		}
+
+		syncPolicy("PolicyMap", e.policyMap,
+			e.realizedPolicy.PolicyMapState, e.desiredPolicy.PolicyMapState)
 
 		if errors > 0 {
 			return fmt.Errorf("syncPolicyMapDelta failed")
@@ -1259,16 +1276,32 @@ func (e *Endpoint) addPolicyMapDelta() error {
 
 	errors := 0
 
-	for keyToAdd, entry := range e.desiredPolicy.PolicyMapState {
-		if oldEntry, ok := e.realizedPolicy.PolicyMapState[keyToAdd]; !ok || !oldEntry.Equal(&entry) {
-			if added, err := addPolicyKey(e.policyMap, e.realizedPolicy.PolicyMapState, e.desiredPolicy.PolicyMapState, keyToAdd, entry, false); !added {
-				e.getLogger().WithError(err).WithFields(logrus.Fields{
-					logfields.Port: entry.ProxyPort,
-				}).Error("Failed to add PolicyMap key")
-				errors++
+	addPolicy := func(
+		policyMapName string,
+		policyMap *policymap.PolicyMap,
+		realizedPolicy, desiredPolicy policy.MapState,
+	) {
+		for keyToAdd, entry := range desiredPolicy {
+			if oldEntry, ok := realizedPolicy[keyToAdd]; !ok || !oldEntry.Equal(&entry) {
+				if added, err := addPolicyKey(
+					policyMap,
+					realizedPolicy,
+					desiredPolicy,
+					keyToAdd,
+					entry,
+					false,
+				); !added {
+					e.getLogger().WithError(err).WithFields(logrus.Fields{
+						logfields.Port: entry.ProxyPort,
+					}).Errorf("Failed to add %s key", policyMapName)
+					errors++
+				}
 			}
 		}
 	}
+
+	addPolicy("PolicyMap", e.policyMap,
+		e.realizedPolicy.PolicyMapState, e.desiredPolicy.PolicyMapState)
 
 	if errors > 0 {
 		return fmt.Errorf("updating desired PolicyMap state failed")
@@ -1296,59 +1329,84 @@ func (e *Endpoint) syncPolicyMapWithDump() error {
 		e.desiredPolicy.PolicyMapState = make(policy.MapState)
 	}
 
-	if e.policyMap == nil {
-		return fmt.Errorf("not syncing PolicyMap state for endpoint because PolicyMap is nil")
-	}
-
-	currentMapContents, err := e.policyMap.DumpKeysToSlice()
-
-	// If map is unable to be dumped, attempt to close map and open it again.
-	// See GH-4229.
-	if err != nil {
-		e.getLogger().WithError(err).Error("unable to dump PolicyMap when trying to sync desired and realized PolicyMap state")
-
-		// Close to avoid leaking of file descriptors, but still continue in case
-		// Close() does not succeed, because otherwise the map will never be
-		// opened again unless the agent is restarted.
-		err := e.policyMap.Close()
-		if err != nil {
-			e.getLogger().WithError(err).Error("unable to close PolicyMap which was not able to be dumped")
-		}
-
-		e.policyMap, _, err = policymap.OpenOrCreate(e.policyMapPath())
-		if err != nil {
-			return fmt.Errorf("unable to open PolicyMap for endpoint: %s", err)
-		}
-
-		// Try to dump again, fail if error occurs.
-		currentMapContents, err = e.policyMap.DumpKeysToSlice()
-		if err != nil {
-			return err
-		}
-	}
-
 	errors := 0
 
-	for _, entry := range currentMapContents {
-		// Convert key to host-byte order for lookup in the desiredMapState.
-		keyHostOrder := entry.ToHost()
-
-		// Convert from policymap.Key to policy.Key
-		keyToDelete := policy.Key{
-			Identity:         keyHostOrder.Identity,
-			DestPort:         keyHostOrder.DestPort,
-			Nexthdr:          keyHostOrder.Nexthdr,
-			TrafficDirection: keyHostOrder.TrafficDirection,
+	syncWithDump := func(pm *policymap.PolicyMap, realized, desired policy.MapState, mapName, mapPath string) error {
+		if pm == nil {
+			return fmt.Errorf("not syncing %s state for endpoint because %s is nil", mapName, mapName)
 		}
 
-		// If key that is in policy map is not in desired state, just remove it.
-		if _, ok := e.desiredPolicy.PolicyMapState[keyToDelete]; !ok {
-			e.getLogger().WithField(logfields.BPFMapKey, entry.String()).Debug("syncPolicyMapWithDump removing a bpf policy entry not in the desired state")
-			if deleted, err := deletePolicyKey(e.policyMap, e.realizedPolicy.PolicyMapState, e.desiredPolicy.PolicyMapState, keyToDelete, false, nil); !deleted {
-				e.getLogger().WithError(err).Error("Failed to delete PolicyMap key")
-				errors++
+		currentMapContents, err := pm.DumpKeysToSlice()
+
+		// If map is unable to be dumped, attempt to close map and open it again.
+		// See GH-4229.
+		if err != nil {
+			e.getLogger().WithError(err).
+				Errorf("unable to dump %s when trying to sync desired and realized %s state", mapName, mapName)
+
+			// Close to avoid leaking of file descriptors, but still continue in case
+			// Close() does not succeed, because otherwise the map will never be
+			// opened again unless the agent is restarted.
+			err := pm.Close()
+			if err != nil {
+				e.getLogger().WithError(err).
+					Errorf("unable to close %s which was not able to be dumped", mapName)
+			}
+
+			pm, _, err = policymap.OpenOrCreate(mapPath)
+			if err != nil {
+				return fmt.Errorf("unable to open %s for endpoint: %s", mapName, err)
+			}
+
+			// Try to dump again, fail if error occurs.
+			currentMapContents, err = pm.DumpKeysToSlice()
+			if err != nil {
+				return err
 			}
 		}
+
+		for _, entry := range currentMapContents {
+			// Convert key to host-byte order for lookup in the desiredMapState.
+			keyHostOrder := entry.ToHost()
+
+			// Convert from policymap.Key to policy.Key
+			keyToDelete := policy.Key{
+				Identity:         keyHostOrder.Identity,
+				DestPort:         keyHostOrder.DestPort,
+				Nexthdr:          keyHostOrder.Nexthdr,
+				TrafficDirection: keyHostOrder.TrafficDirection,
+			}
+
+			// If key that is in policy map is not in desired state, just remove it.
+			if _, ok := e.desiredPolicy.PolicyMapState[keyToDelete]; !ok {
+				e.getLogger().WithField(logfields.BPFMapKey, entry.String()).
+					Debug("syncPolicyMapWithDump removing a bpf policy entry not in the desired state")
+				if deleted, err := deletePolicyKey(
+					pm,
+					realized,
+					desired,
+					keyToDelete,
+					false,
+					nil,
+				); !deleted {
+					e.getLogger().WithError(err).
+						Errorf("Failed to delete %s key", mapName)
+					errors++
+				}
+			}
+		}
+		return err
+	}
+
+	err := syncWithDump(
+		e.policyMap,
+		e.realizedPolicy.PolicyMapState,
+		e.desiredPolicy.PolicyMapState,
+		"PolicyMap",
+		e.policyMapPath(),
+	)
+	if err != nil {
+		return err
 	}
 
 	err = e.addPolicyMapDelta()
