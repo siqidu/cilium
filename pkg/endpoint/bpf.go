@@ -211,6 +211,7 @@ func (e *Endpoint) addNewRedirectsFromDesiredPolicy(ingress bool, desiredRedirec
 	updatedDesiredMapState := make(policy.MapState)
 
 	for _, l4 := range m {
+		// Deny policies do not support redirects
 		if l4.IsRedirect() {
 			var redirectPort uint16
 			// Only create a redirect if the proxy is NOT running in a sidecar
@@ -795,6 +796,23 @@ func (e *Endpoint) runPreCompilationSteps(regenContext *regenerationContext) (he
 		e.realizedPolicy.PolicyMapState = make(policy.MapState)
 	}
 
+	if e.policyDenyMap == nil {
+		e.policyDenyMap, _, err = policymap.OpenOrCreate(e.policyDenyMapPath())
+		if err != nil {
+			return false, err
+		}
+		// Clean up map contents
+		e.getLogger().Debug("flushing old PolicyDenyMap")
+		err = e.policyDenyMap.DeleteAll()
+		if err != nil {
+			return false, err
+		}
+
+		// Also reset the in-memory state of the realized state as the
+		// BPF map content is guaranteed to be empty right now.
+		e.realizedPolicy.PolicyDenyMapState = make(policy.MapState)
+	}
+
 	// Only generate & populate policy map if a security identity is set up for
 	// this endpoint.
 	if e.SecurityIdentity != nil {
@@ -828,6 +846,7 @@ func (e *Endpoint) runPreCompilationSteps(regenContext *regenerationContext) (he
 		)
 		if e.desiredPolicy != nil {
 			stats.proxyConfiguration.Start()
+			// Deny policies do not support redirects
 			desiredRedirects, err, finalizeFunc, revertFunc = e.addNewRedirects(datapathRegenCtxt.proxyWaitGroup)
 			stats.proxyConfiguration.End(err == nil)
 			if err != nil {
@@ -1163,10 +1182,10 @@ func (e *Endpoint) applyPolicyMapChanges() (proxyChanges bool, err error) {
 	//  collected on the newly computed desired policy, which is
 	//  not fully realized yet. This is why we get the map changes
 	//  from the desired policy here.
-	adds, deletes := e.desiredPolicy.ConsumeMapChanges()
+	allowAdds, allowDeletes, denyAdds, denyDeletes := e.desiredPolicy.ConsumeMapChanges()
 
 	// Add policy map entries before deleting to avoid transient drops
-	for keyToAdd, entry := range adds {
+	for keyToAdd, entry := range allowAdds {
 		// Keep the existing proxy port, if any
 		if entry.IsRedirectEntry() {
 			entry.ProxyPort = e.realizedRedirects[policy.ProxyIDFromKey(e.ID, keyToAdd)]
@@ -1187,7 +1206,7 @@ func (e *Endpoint) applyPolicyMapChanges() (proxyChanges bool, err error) {
 		}
 	}
 
-	for keyToDelete := range deletes {
+	for keyToDelete := range allowDeletes {
 		if deleted, err := deletePolicyKey(
 			e.policyMap,
 			e.realizedPolicy.PolicyMapState, e.desiredPolicy.PolicyMapState,
@@ -1200,12 +1219,50 @@ func (e *Endpoint) applyPolicyMapChanges() (proxyChanges bool, err error) {
 		}
 	}
 
+	for keyToAdd, entry := range denyAdds {
+		// Redirects are not supported in deny policies, log if that's the case.
+		if entry.IsRedirectEntry() {
+			e.getLogger().WithFields(logrus.Fields{
+				logfields.Key: keyToAdd,
+				"entry":       entry,
+			}).Error("BUG: Deny policies do not support redirects")
+			continue
+		}
+		if added, err := addPolicyKey(
+			e.policyDenyMap,
+			e.realizedPolicy.PolicyDenyMapState, e.desiredPolicy.PolicyDenyMapState,
+			keyToAdd,
+			entry,
+			e.desiredPolicy != e.realizedPolicy,
+		); !added {
+			e.getLogger().WithError(err).WithFields(logrus.Fields{
+				logfields.Port: entry.ProxyPort,
+			}).Error("Failed to add PolicyMap key")
+			errors++
+		}
+	}
+
+	for keyToDelete := range denyDeletes {
+		if deleted, err := deletePolicyKey(
+			e.policyDenyMap,
+			e.realizedPolicy.PolicyDenyMapState, e.desiredPolicy.PolicyDenyMapState,
+			keyToDelete,
+			e.desiredPolicy != e.realizedPolicy,
+			&proxyChanges,
+		); !deleted {
+			e.getLogger().WithError(err).Error("Failed to delete PolicyDenyMap key")
+			errors++
+		}
+	}
+
 	if errors > 0 {
 		return proxyChanges, fmt.Errorf("updating desired PolicyMap state failed")
-	} else if len(adds)+len(deletes) > 0 {
+	} else if len(allowAdds)+len(allowDeletes)+len(denyAdds)+len(denyDeletes) > 0 {
 		e.getLogger().WithFields(logrus.Fields{
-			logfields.AddedPolicyID:   adds,
-			logfields.DeletedPolicyID: deletes,
+			logfields.AddedPolicyID:       allowAdds,
+			logfields.DeletedPolicyID:     allowDeletes,
+			logfields.AddedPolicyDenyID:   denyAdds,
+			logfields.DeletedPolicyDenyID: denyDeletes,
 		}).Debug("Applied policy map updates due identity changes")
 	}
 
@@ -1253,6 +1310,8 @@ func (e *Endpoint) syncPolicyMap() error {
 
 		syncPolicy("PolicyMap", e.policyMap,
 			e.realizedPolicy.PolicyMapState, e.desiredPolicy.PolicyMapState)
+		syncPolicy("PolicyDenyMap", e.policyDenyMap,
+			e.realizedPolicy.PolicyDenyMapState, e.desiredPolicy.PolicyDenyMapState)
 
 		if errors > 0 {
 			return fmt.Errorf("syncPolicyMapDelta failed")
@@ -1302,6 +1361,8 @@ func (e *Endpoint) addPolicyMapDelta() error {
 
 	addPolicy("PolicyMap", e.policyMap,
 		e.realizedPolicy.PolicyMapState, e.desiredPolicy.PolicyMapState)
+	addPolicy("PolicyDenyMap", e.policyDenyMap,
+		e.realizedPolicy.PolicyDenyMapState, e.desiredPolicy.PolicyDenyMapState)
 
 	if errors > 0 {
 		return fmt.Errorf("updating desired PolicyMap state failed")
@@ -1325,8 +1386,16 @@ func (e *Endpoint) syncPolicyMapWithDump() error {
 		e.realizedPolicy.PolicyMapState = make(policy.MapState)
 	}
 
+	if e.realizedPolicy.PolicyDenyMapState == nil {
+		e.realizedPolicy.PolicyDenyMapState = make(policy.MapState)
+	}
+
 	if e.desiredPolicy.PolicyMapState == nil {
 		e.desiredPolicy.PolicyMapState = make(policy.MapState)
+	}
+
+	if e.desiredPolicy.PolicyDenyMapState == nil {
+		e.desiredPolicy.PolicyDenyMapState = make(policy.MapState)
 	}
 
 	errors := 0
@@ -1378,7 +1447,7 @@ func (e *Endpoint) syncPolicyMapWithDump() error {
 			}
 
 			// If key that is in policy map is not in desired state, just remove it.
-			if _, ok := e.desiredPolicy.PolicyMapState[keyToDelete]; !ok {
+			if _, ok := desired[keyToDelete]; !ok {
 				e.getLogger().WithField(logfields.BPFMapKey, entry.String()).
 					Debug("syncPolicyMapWithDump removing a bpf policy entry not in the desired state")
 				if deleted, err := deletePolicyKey(
@@ -1404,6 +1473,17 @@ func (e *Endpoint) syncPolicyMapWithDump() error {
 		e.desiredPolicy.PolicyMapState,
 		"PolicyMap",
 		e.policyMapPath(),
+	)
+	if err != nil {
+		return err
+	}
+
+	err = syncWithDump(
+		e.policyDenyMap,
+		e.realizedPolicy.PolicyDenyMapState,
+		e.desiredPolicy.PolicyDenyMapState,
+		"PolicyDenyMap",
+		e.policyDenyMapPath(),
 	)
 	if err != nil {
 		return err

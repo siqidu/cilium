@@ -146,8 +146,11 @@ type EndpointPolicy struct {
 type EndpointPolicyDirection struct {
 	Enforcing bool                `json:"enforcing"`
 	Allowed   AllowedIdentityList `json:"allowed,omitempty"`
-	Removing  AllowedIdentityList `json:"removing,omitempty"`
-	Adding    AllowedIdentityList `json:"adding,omitempty"`
+	Denied    DenyIdentityList    `json:"denied,omitempty"`
+	// Deprecated
+	Removing AllowedIdentityList `json:"removing,omitempty"`
+	// Deprecated
+	Adding AllowedIdentityList `json:"adding,omitempty"`
 }
 
 // AllowedIdentityTuple specifies an allowed peer by identity, destination port
@@ -163,6 +166,9 @@ type AllowedIdentityTuple struct {
 
 // AllowedIdentityList is a list of AllowedIdentityTuple.
 type AllowedIdentityList []AllowedIdentityTuple
+
+// DenyIdentityList is a List of denied identities tuple
+type DenyIdentityList = AllowedIdentityList
 
 // Sort sorts a list AllowedIdentityTuple by numeric identity, port and
 // protocol.

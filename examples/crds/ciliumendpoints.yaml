@@ -242,7 +242,7 @@ spec:
                   description: EndpointPolicyDirection is the list of allowed identities per direction.
                   properties:
                     adding:
-                      description: AllowedIdentityList is a list of AllowedIdentityTuple.
+                      description: Deprecated
                       items:
                         description: AllowedIdentityTuple specifies an allowed peer by identity, destination port and protocol.
                         properties:
@@ -277,10 +277,28 @@ spec:
                             type: integer
                         type: object
                       type: array
+                    denied:
+                      description: AllowedIdentityList is a list of AllowedIdentityTuple.
+                      items:
+                        description: AllowedIdentityTuple specifies an allowed peer by identity, destination port and protocol.
+                        properties:
+                          dest-port:
+                            type: integer
+                          identity:
+                            format: int64
+                            type: integer
+                          identity-labels:
+                            additionalProperties:
+                              type: string
+                            type: object
+                          protocol:
+                            type: integer
+                        type: object
+                      type: array
                     enforcing:
                       type: boolean
                     removing:
-                      description: AllowedIdentityList is a list of AllowedIdentityTuple.
+                      description: Deprecated
                       items:
                         description: AllowedIdentityTuple specifies an allowed peer by identity, destination port and protocol.
                         properties:
@@ -304,7 +322,7 @@ spec:
                   description: EndpointPolicyDirection is the list of allowed identities per direction.
                   properties:
                     adding:
-                      description: AllowedIdentityList is a list of AllowedIdentityTuple.
+                      description: Deprecated
                       items:
                         description: AllowedIdentityTuple specifies an allowed peer by identity, destination port and protocol.
                         properties:
@@ -339,10 +357,28 @@ spec:
                             type: integer
                         type: object
                       type: array
+                    denied:
+                      description: AllowedIdentityList is a list of AllowedIdentityTuple.
+                      items:
+                        description: AllowedIdentityTuple specifies an allowed peer by identity, destination port and protocol.
+                        properties:
+                          dest-port:
+                            type: integer
+                          identity:
+                            format: int64
+                            type: integer
+                          identity-labels:
+                            additionalProperties:
+                              type: string
+                            type: object
+                          protocol:
+                            type: integer
+                        type: object
+                      type: array
                     enforcing:
                       type: boolean
                     removing:
-                      description: AllowedIdentityList is a list of AllowedIdentityTuple.
+                      description: Deprecated
                       items:
                         description: AllowedIdentityTuple specifies an allowed peer by identity, destination port and protocol.
                         properties:

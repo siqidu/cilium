@@ -192,6 +192,10 @@ type Endpoint struct {
 	// reference to all policy related BPF
 	policyMap *policymap.PolicyMap
 
+	// policyDenyMap is the policy related state of the datapath including
+	// reference to all policy related BPF
+	policyDenyMap *policymap.PolicyMap
+
 	// Options determine the datapath configuration of the endpoint.
 	Options *option.IntOptions
 
@@ -642,7 +646,11 @@ func (e *Endpoint) Allows(id identity.NumericIdentity) bool {
 		TrafficDirection: trafficdirection.Ingress.Uint8(),
 	}
 
-	_, ok := e.desiredPolicy.PolicyMapState[keyToLookup]
+	_, ok := e.desiredPolicy.PolicyDenyMapState[keyToLookup]
+	if ok {
+		return false
+	}
+	_, ok = e.desiredPolicy.PolicyMapState[keyToLookup]
 	return ok
 }
 

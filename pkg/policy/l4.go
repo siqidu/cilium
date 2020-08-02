@@ -208,6 +208,9 @@ type L4Filter struct {
 
 	// This reference is circular, but it is cleaned up at Detach()
 	policy unsafe.Pointer // *L4Policy
+
+	// isDeny is true if the filter applies for deny policies.
+	isDeny bool
 }
 
 // SelectsAllEndpoints returns whether the L4Filter selects all
@@ -370,7 +373,8 @@ func (l4 *L4Filter) IdentitySelectionUpdated(selector CachedSelector, added, del
 		if l4.Ingress {
 			direction = trafficdirection.Ingress
 		}
-		l4Policy.AccumulateMapChanges(added, deleted, l4, direction, l4.L7RulesPerSelector[selector] != nil)
+		isRedirect := l4.L7RulesPerSelector[selector] != nil
+		l4Policy.AccumulateMapChanges(added, deleted, l4, direction, isRedirect, l4.isDeny)
 	}
 }
 
@@ -479,6 +483,7 @@ func createL4Filter(policyCtx PolicyContext, peerEndpoints api.EndpointSelectorS
 		L7RulesPerSelector: make(L7DataMap),
 		DerivedFromRules:   labels.LabelArrayList{ruleLabels},
 		Ingress:            ingress,
+		isDeny:             policyCtx.IsDeny(),
 	}
 
 	if peerEndpoints.SelectsAllEndpoints() {
@@ -813,7 +818,7 @@ func (l4 *L4Policy) insertUser(user *EndpointPolicy) {
 // The caller is responsible for making sure the same identity is not
 // present in both 'adds' and 'deletes'.
 func (l4 *L4Policy) AccumulateMapChanges(adds, deletes []identity.NumericIdentity, l4Filter *L4Filter,
-	direction trafficdirection.TrafficDirection, redirect bool) {
+	direction trafficdirection.TrafficDirection, redirect, isDeny bool) {
 	port := uint16(l4Filter.Port)
 	proto := uint8(l4Filter.U8Proto)
 	derivedFrom := l4Filter.DerivedFromRules
@@ -836,7 +841,11 @@ func (l4 *L4Policy) AccumulateMapChanges(adds, deletes []identity.NumericIdentit
 			}
 		}
 
-		epPolicy.policyMapChanges.AccumulateMapChanges(adds, deletes, port, proto, direction, redirect, derivedFrom)
+		if !isDeny {
+			epPolicy.policyMapChanges.AccumulateMapChanges(adds, deletes, port, proto, direction, redirect, derivedFrom)
+		} else {
+			epPolicy.policyDenyMapChanges.AccumulateMapChanges(adds, deletes, port, proto, direction, redirect, derivedFrom)
+		}
 	}
 }
 

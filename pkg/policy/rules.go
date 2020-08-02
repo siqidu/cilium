@@ -24,15 +24,15 @@ import (
 // to be written with []*rule as a receiver.
 type ruleSlice []*rule
 
-func (rules ruleSlice) resolveL4IngressPolicy(policyCtx PolicyContext, ctx *SearchContext) (L4PolicyMap, error) {
-	result := L4PolicyMap{}
+func (rules ruleSlice) resolveL4IngressPolicy(policyCtx PolicyContext, ctx *SearchContext) (L4PolicyMap, L4PolicyMap, error) {
+	result, resultDeny := L4PolicyMap{}, L4PolicyMap{}
 
 	ctx.PolicyTrace("\n")
 	ctx.PolicyTrace("Resolving ingress policy for %+v\n", ctx.To)
 
 	state := traceState{}
 	var matchedRules ruleSlice
-	var requirements []slim_metav1.LabelSelectorRequirement
+	var requirements, requirementsDeny []slim_metav1.LabelSelectorRequirement
 
 	// Iterate over all FromRequires which select ctx.To. These requirements
 	// will be appended to each EndpointSelector's MatchExpressions in
@@ -46,6 +46,11 @@ func (rules ruleSlice) resolveL4IngressPolicy(policyCtx PolicyContext, ctx *Sear
 					requirements = append(requirements, requirement.ConvertToLabelSelectorRequirementSlice()...)
 				}
 			}
+			for _, ingressRule := range r.IngressDeny {
+				for _, requirement := range ingressRule.FromRequires {
+					requirementsDeny = append(requirementsDeny, requirement.ConvertToLabelSelectorRequirementSlice()...)
+				}
+			}
 		}
 	}
 
@@ -54,13 +59,16 @@ func (rules ruleSlice) resolveL4IngressPolicy(policyCtx PolicyContext, ctx *Sear
 	ctx.rulesSelect = true
 
 	for _, r := range matchedRules {
-		found, err := r.resolveIngressPolicy(policyCtx, ctx, &state, result, requirements)
+		found, foundDeny, err := r.resolveIngressPolicy(policyCtx, ctx, &state, result, resultDeny, requirements, requirementsDeny)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		state.ruleID++
-		if found != nil {
+		if found != nil && len(found) != 0 {
 			state.matchedRules++
+		}
+		if foundDeny != nil && len(foundDeny) != 0 {
+			state.matchedDenyRules++
 		}
 	}
 
@@ -69,18 +77,18 @@ func (rules ruleSlice) resolveL4IngressPolicy(policyCtx PolicyContext, ctx *Sear
 	// Restore ctx in case caller uses it again.
 	ctx.rulesSelect = oldRulesSelect
 
-	return result, nil
+	return result, resultDeny, nil
 }
 
-func (rules ruleSlice) resolveL4EgressPolicy(policyCtx PolicyContext, ctx *SearchContext) (L4PolicyMap, error) {
-	result := L4PolicyMap{}
+func (rules ruleSlice) resolveL4EgressPolicy(policyCtx PolicyContext, ctx *SearchContext) (L4PolicyMap, L4PolicyMap, error) {
+	result, resultDeny := L4PolicyMap{}, L4PolicyMap{}
 
 	ctx.PolicyTrace("\n")
 	ctx.PolicyTrace("Resolving egress policy for %+v\n", ctx.From)
 
 	state := traceState{}
 	var matchedRules ruleSlice
-	var requirements []slim_metav1.LabelSelectorRequirement
+	var requirements, requirementsDeny []slim_metav1.LabelSelectorRequirement
 
 	// Iterate over all ToRequires which select ctx.To. These requirements will
 	// be appended to each EndpointSelector's MatchExpressions in each
@@ -94,6 +102,11 @@ func (rules ruleSlice) resolveL4EgressPolicy(policyCtx PolicyContext, ctx *Searc
 					requirements = append(requirements, requirement.ConvertToLabelSelectorRequirementSlice()...)
 				}
 			}
+			for _, egressRule := range r.EgressDeny {
+				for _, requirement := range egressRule.ToRequires {
+					requirementsDeny = append(requirementsDeny, requirement.ConvertToLabelSelectorRequirementSlice()...)
+				}
+			}
 		}
 	}
 
@@ -103,13 +116,16 @@ func (rules ruleSlice) resolveL4EgressPolicy(policyCtx PolicyContext, ctx *Searc
 
 	for i, r := range matchedRules {
 		state.ruleID = i
-		found, err := r.resolveEgressPolicy(policyCtx, ctx, &state, result, requirements)
+		found, foundDeny, err := r.resolveEgressPolicy(policyCtx, ctx, &state, result, resultDeny, requirements, requirementsDeny)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		state.ruleID++
-		if found != nil {
+		if found != nil && len(found) != 0 {
 			state.matchedRules++
+		}
+		if foundDeny != nil && len(foundDeny) != 0 {
+			state.matchedDenyRules++
 		}
 	}
 
@@ -118,22 +134,22 @@ func (rules ruleSlice) resolveL4EgressPolicy(policyCtx PolicyContext, ctx *Searc
 	// Restore ctx in case caller uses it again.
 	ctx.rulesSelect = oldRulesSelect
 
-	return result, nil
+	return result, resultDeny, nil
 }
 
-func (rules ruleSlice) resolveCIDRPolicy(ctx *SearchContext) *CIDRPolicy {
-	result := NewCIDRPolicy()
+func (rules ruleSlice) resolveCIDRPolicy(ctx *SearchContext) (*CIDRPolicy, *CIDRPolicy) {
+	result, resultDeny := NewCIDRPolicy(), NewCIDRPolicy()
 
 	ctx.PolicyTrace("Resolving L3 (CIDR) policy for %+v\n", ctx.To)
 
 	state := traceState{}
 	for _, r := range rules {
-		r.resolveCIDRPolicy(ctx, &state, result)
+		r.resolveCIDRPolicy(ctx, &state, result, resultDeny)
 		state.ruleID++
 	}
 
 	state.trace(len(rules), ctx)
-	return result
+	return result, resultDeny
 }
 
 // updateEndpointsCaches iterates over a given list of rules to update the cache

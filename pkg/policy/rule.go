@@ -270,7 +270,7 @@ func mergeIngressPortProto(policyCtx PolicyContext, ctx *SearchContext, endpoint
 	return 1, nil
 }
 
-func traceL3(ctx *SearchContext, peerEndpoints api.EndpointSelectorSlice, direction string) {
+func traceL3(ctx *SearchContext, peerEndpoints api.EndpointSelectorSlice, direction string, isDeny bool) {
 	var result bytes.Buffer
 
 	// Requirements will be cloned into every selector, only trace them once.
@@ -283,7 +283,11 @@ func traceL3(ctx *SearchContext, peerEndpoints api.EndpointSelectorSlice, direct
 	// EndpointSelector
 	for _, sel := range peerEndpoints {
 		if len(sel.MatchLabels) > 0 {
-			result.WriteString("    Allows ")
+			if !isDeny {
+				result.WriteString("    Allows ")
+			} else {
+				result.WriteString("    Denies ")
+			}
 			result.WriteString(direction)
 			result.WriteString(" labels ")
 			result.WriteString(sel.String())
@@ -324,7 +328,7 @@ func mergeIngress(policyCtx PolicyContext, ctx *SearchContext, fromEndpoints api
 
 	if ctx.From != nil && len(fromEndpoints) > 0 {
 		if ctx.TraceEnabled() {
-			traceL3(ctx, fromEndpoints, "from")
+			traceL3(ctx, fromEndpoints, "from", policyCtx.IsDeny())
 		}
 		if !fromEndpoints.Matches(ctx.From) {
 			ctx.PolicyTrace("      No label match for %s", ctx.From)
@@ -368,8 +372,11 @@ func mergeIngress(policyCtx PolicyContext, ctx *SearchContext, fromEndpoints api
 		if len(fromEndpoints) == 0 {
 			fromEndpoints = api.EndpointSelectorSlice{api.WildcardEndpointSelector}
 		}
-
-		ctx.PolicyTrace("      Allows port %v\n", r.Ports)
+		if !policyCtx.IsDeny() {
+			ctx.PolicyTrace("      Allows port %v\n", r.Ports)
+		} else {
+			ctx.PolicyTrace("      Denies port %v\n", r.Ports)
+		}
 		if !rulePortsCoverSearchContext(r.Ports, ctx) {
 			ctx.PolicyTrace("        No port match found\n")
 			continue
@@ -430,25 +437,48 @@ func (state *traceState) unSelectRule(ctx *SearchContext, labels labels.LabelArr
 // other rules are stored in the specified slice of LabelSelectorRequirement.
 // These requirements are dynamically inserted into a copy of the receiver rule,
 // as requirements form conjunctions across all rules.
-func (r *rule) resolveIngressPolicy(policyCtx PolicyContext, ctx *SearchContext, state *traceState, result L4PolicyMap, requirements []slim_metav1.LabelSelectorRequirement) (L4PolicyMap, error) {
+func (r *rule) resolveIngressPolicy(
+	policyCtx PolicyContext,
+	ctx *SearchContext,
+	state *traceState,
+	result, resultDeny L4PolicyMap,
+	requirements, requirementsDeny []slim_metav1.LabelSelectorRequirement,
+) (
+	L4PolicyMap, L4PolicyMap, error,
+) {
 	if !ctx.rulesSelect {
 		if !r.getSelector().Matches(ctx.To) {
 			state.unSelectRule(ctx, ctx.To, r)
-			return nil, nil
+			return nil, nil, nil
 		}
 	}
 
 	state.selectRule(ctx, r)
 	found := 0
 
-	if len(r.Ingress) == 0 {
+	if len(r.Ingress) == 0 && len(r.IngressDeny) == 0 {
 		ctx.PolicyTrace("    No ingress rules\n")
 	}
 	for _, ingressRule := range r.Ingress {
 		fromEndpoints := ingressRule.GetSourceEndpointSelectorsWithRequirements(requirements)
 		cnt, err := mergeIngress(policyCtx, ctx, fromEndpoints, ingressRule.ToPorts, r.Rule.Labels.DeepCopy(), result)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
+		}
+		if cnt > 0 {
+			found += cnt
+		}
+	}
+
+	oldDeny := policyCtx.SetDeny(true)
+	defer func() {
+		policyCtx.SetDeny(oldDeny)
+	}()
+	for _, ingressRule := range r.IngressDeny {
+		fromEndpoints := ingressRule.GetSourceEndpointSelectorsWithRequirements(requirementsDeny)
+		cnt, err := mergeIngress(policyCtx, ctx, fromEndpoints, ingressRule.ToPorts, r.Rule.Labels.DeepCopy(), resultDeny)
+		if err != nil {
+			return nil, nil, err
 		}
 		if cnt > 0 {
 			found += cnt
@@ -456,22 +486,26 @@ func (r *rule) resolveIngressPolicy(policyCtx PolicyContext, ctx *SearchContext,
 	}
 
 	if found > 0 {
-		return result, nil
+		return result, resultDeny, nil
 	}
 
-	return nil, nil
+	return nil, nil, nil
 }
 
 // ********************** CIDR POLICY **********************
 
 // mergeCIDR inserts all of the CIDRs in ipRules to resMap. Returns the number
 // of CIDRs added to resMap.
-func mergeCIDR(ctx *SearchContext, dir string, ipRules []api.CIDR, ruleLabels labels.LabelArray, resMap *CIDRPolicyMap) int {
+func mergeCIDR(ctx *SearchContext, isDeny bool, dir string, ipRules []api.CIDR, ruleLabels labels.LabelArray, resMap *CIDRPolicyMap) int {
 	found := 0
 
 	for _, r := range ipRules {
 		strCIDR := string(r)
-		ctx.PolicyTrace("  Allows %s IP %s\n", dir, strCIDR)
+		if !isDeny {
+			ctx.PolicyTrace("  Allows %s IP %s\n", dir, strCIDR)
+		} else {
+			ctx.PolicyTrace("  Denies %s IP %s\n", dir, strCIDR)
+		}
 
 		found += resMap.Insert(strCIDR, ruleLabels)
 	}
@@ -483,12 +517,12 @@ func mergeCIDR(ctx *SearchContext, dir string, ipRules []api.CIDR, ruleLabels la
 // the rule corresponds to the current SearchContext. It returns the resultant
 // CIDRPolicy containing the added ingress and egress CIDRs. If no CIDRs are
 // added to result, a nil CIDRPolicy is returned.
-func (r *rule) resolveCIDRPolicy(ctx *SearchContext, state *traceState, result *CIDRPolicy) *CIDRPolicy {
+func (r *rule) resolveCIDRPolicy(ctx *SearchContext, state *traceState, result *CIDRPolicy, resultDeny *CIDRPolicy) (*CIDRPolicy, *CIDRPolicy) {
 	// Don't select rule if it doesn't apply to the given context.
 	if !ctx.rulesSelect {
 		if !r.getSelector().Matches(ctx.To) {
 			state.unSelectRule(ctx, ctx.To, r)
-			return nil
+			return nil, nil
 		}
 	}
 
@@ -507,7 +541,24 @@ func (r *rule) resolveCIDRPolicy(ctx *SearchContext, state *traceState, result *
 			continue
 		}
 
-		if cnt := mergeCIDR(ctx, "Ingress", allCIDRs, r.Labels, &result.Ingress); cnt > 0 {
+		if cnt := mergeCIDR(ctx, false, "Ingress", allCIDRs, r.Labels, &result.Ingress); cnt > 0 {
+			found += cnt
+		}
+	}
+
+	for _, ingressRule := range r.IngressDeny {
+		// TODO (ianvernon): GH-1658
+		var allCIDRs []api.CIDR
+		allCIDRs = append(allCIDRs, ingressRule.FromCIDR...)
+		allCIDRs = append(allCIDRs, api.ComputeResultantCIDRSet(ingressRule.FromCIDRSet)...)
+
+		// CIDR + L4 rules are handled via mergeIngress(),
+		// skip them here.
+		if len(allCIDRs) > 0 && len(ingressRule.ToPorts) > 0 {
+			continue
+		}
+
+		if cnt := mergeCIDR(ctx, true, "Ingress", allCIDRs, r.Labels, &resultDeny.Ingress); cnt > 0 {
 			found += cnt
 		}
 	}
@@ -525,17 +576,31 @@ func (r *rule) resolveCIDRPolicy(ctx *SearchContext, state *traceState, result *
 		// this function, we count the CIDR+L4 policy in the
 		// desired egress CIDR policy here as well. This ensures
 		// proper computation of IPcache prefix lengths.
-		if cnt := mergeCIDR(ctx, "Egress", allCIDRs, r.Labels, &result.Egress); cnt > 0 {
+		if cnt := mergeCIDR(ctx, false, "Egress", allCIDRs, r.Labels, &result.Egress); cnt > 0 {
+			found += cnt
+		}
+	}
+
+	for _, egressRule := range r.EgressDeny {
+		var allCIDRs []api.CIDR
+		allCIDRs = append(allCIDRs, egressRule.ToCIDR...)
+		allCIDRs = append(allCIDRs, api.ComputeResultantCIDRSet(egressRule.ToCIDRSet)...)
+
+		// Unlike the Ingress policy which only counts L3 policy in
+		// this function, we count the CIDR+L4 policy in the
+		// desired egress CIDR policy here as well. This ensures
+		// proper computation of IPcache prefix lengths.
+		if cnt := mergeCIDR(ctx, true, "Egress", allCIDRs, r.Labels, &resultDeny.Egress); cnt > 0 {
 			found += cnt
 		}
 	}
 
 	if found > 0 {
-		return result
+		return result, resultDeny
 	}
 
 	ctx.PolicyTrace("    No L3 rules\n")
-	return nil
+	return nil, nil
 }
 
 func (r *rule) matches(securityIdentity *identity.Identity) bool {
@@ -569,7 +634,7 @@ func mergeEgress(policyCtx PolicyContext, ctx *SearchContext, toEndpoints api.En
 
 	if ctx.To != nil && len(toEndpoints) > 0 {
 		if ctx.TraceEnabled() {
-			traceL3(ctx, toEndpoints, "to")
+			traceL3(ctx, toEndpoints, "to", policyCtx.IsDeny())
 		}
 		if !toEndpoints.Matches(ctx.To) {
 			ctx.PolicyTrace("      No label match for %s", ctx.To)
@@ -600,7 +665,11 @@ func mergeEgress(policyCtx PolicyContext, ctx *SearchContext, toEndpoints api.En
 		if len(toEndpoints) == 0 {
 			toEndpoints = api.EndpointSelectorSlice{api.WildcardEndpointSelector}
 		}
-		ctx.PolicyTrace("      Allows port %v\n", r.Ports)
+		if !policyCtx.IsDeny() {
+			ctx.PolicyTrace("      Allows port %v\n", r.Ports)
+		} else {
+			ctx.PolicyTrace("      Denies port %v\n", r.Ports)
+		}
 		if r.Rules != nil && r.Rules.L7Proto != "" {
 			ctx.PolicyTrace("        l7proto: \"%s\"\n", r.Rules.L7Proto)
 		}
@@ -672,25 +741,48 @@ func mergeEgressPortProto(policyCtx PolicyContext, ctx *SearchContext, endpoints
 	return 1, nil
 }
 
-func (r *rule) resolveEgressPolicy(policyCtx PolicyContext, ctx *SearchContext, state *traceState, result L4PolicyMap, requirements []slim_metav1.LabelSelectorRequirement) (L4PolicyMap, error) {
+func (r *rule) resolveEgressPolicy(
+	policyCtx PolicyContext,
+	ctx *SearchContext,
+	state *traceState,
+	result, resultDeny L4PolicyMap,
+	requirements, requirementsDeny []slim_metav1.LabelSelectorRequirement,
+) (
+	L4PolicyMap, L4PolicyMap, error,
+) {
 	if !ctx.rulesSelect {
 		if !r.getSelector().Matches(ctx.From) {
 			state.unSelectRule(ctx, ctx.From, r)
-			return nil, nil
+			return nil, nil, nil
 		}
 	}
 
 	state.selectRule(ctx, r)
 	found := 0
 
-	if len(r.Egress) == 0 {
-		ctx.PolicyTrace("    No L4 rules\n")
+	if len(r.Egress) == 0 && len(r.EgressDeny) == 0 {
+		ctx.PolicyTrace("    No egress rules\n")
 	}
 	for _, egressRule := range r.Egress {
 		toEndpoints := egressRule.GetDestinationEndpointSelectorsWithRequirements(requirements)
 		cnt, err := mergeEgress(policyCtx, ctx, toEndpoints, egressRule.ToPorts, r.Rule.Labels.DeepCopy(), result, egressRule.ToFQDNs)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
+		}
+		if cnt > 0 {
+			found += cnt
+		}
+	}
+
+	oldDeny := policyCtx.SetDeny(true)
+	defer func() {
+		policyCtx.SetDeny(oldDeny)
+	}()
+	for _, egressRule := range r.EgressDeny {
+		toEndpoints := egressRule.GetDestinationEndpointSelectorsWithRequirements(requirementsDeny)
+		cnt, err := mergeEgress(policyCtx, ctx, toEndpoints, egressRule.ToPorts, r.Rule.Labels.DeepCopy(), resultDeny, egressRule.ToFQDNs)
+		if err != nil {
+			return nil, nil, err
 		}
 		if cnt > 0 {
 			found += cnt
@@ -698,8 +790,8 @@ func (r *rule) resolveEgressPolicy(policyCtx PolicyContext, ctx *SearchContext, 
 	}
 
 	if found > 0 {
-		return result, nil
+		return result, resultDeny, nil
 	}
 
-	return nil, nil
+	return nil, nil, nil
 }

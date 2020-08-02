@@ -345,9 +345,17 @@ func (e *Endpoint) GetPolicyModel() *models.EndpointPolicyStatus {
 	realizedIngressIdentities, realizedEgressIdentities :=
 		e.realizedPolicy.PolicyMapState.GetIdentities(realizedLog)
 
+	realizedDenyLog := log.WithField("map-name", "realized-deny").Logger
+	realizedDenyIngressIdentities, realizedDenyEgressIdentities :=
+		e.realizedPolicy.PolicyDenyMapState.GetIdentities(realizedDenyLog)
+
 	desiredLog := log.WithField("map-name", "desired").Logger
 	desiredIngressIdentities, desiredEgressIdentities :=
 		e.desiredPolicy.PolicyMapState.GetIdentities(desiredLog)
+
+	desiredDenyLog := log.WithField("map-name", "desired-deny").Logger
+	desiredDenyIngressIdentities, desiredDenyEgressIdentities :=
+		e.desiredPolicy.PolicyDenyMapState.GetIdentities(desiredDenyLog)
 
 	policyEnabled := e.policyStatus()
 
@@ -360,12 +368,16 @@ func (e *Endpoint) GetPolicyModel() *models.EndpointPolicyStatus {
 	sortProxyStats(proxyStats)
 
 	var (
-		realizedCIDRPolicy *policy.CIDRPolicy
-		realizedL4Policy   *policy.L4Policy
+		realizedCIDRPolicy     *policy.CIDRPolicy
+		realizedL4Policy       *policy.L4Policy
+		realizedCIDRDenyPolicy *policy.CIDRPolicy
+		realizedL4DenyPolicy   *policy.L4Policy
 	)
 	if e.realizedPolicy != nil {
 		realizedL4Policy = e.realizedPolicy.L4Policy
 		realizedCIDRPolicy = e.realizedPolicy.CIDRPolicy
+		realizedL4DenyPolicy = e.realizedPolicy.L4PolicyDeny
+		realizedCIDRDenyPolicy = e.realizedPolicy.CIDRPolicyDeny
 	}
 
 	mdl := &models.EndpointPolicy{
@@ -375,18 +387,26 @@ func (e *Endpoint) GetPolicyModel() *models.EndpointPolicyStatus {
 		PolicyRevision:           int64(e.policyRevision),
 		AllowedIngressIdentities: realizedIngressIdentities,
 		AllowedEgressIdentities:  realizedEgressIdentities,
+		DeniedIngressIdentities:  realizedDenyIngressIdentities,
+		DeniedEgressIdentities:   realizedDenyEgressIdentities,
 		CidrPolicy:               realizedCIDRPolicy.GetModel(),
+		CidrDenyPolicy:           realizedCIDRDenyPolicy.GetModel(),
 		L4:                       realizedL4Policy.GetModel(),
+		L4Deny:                   realizedL4DenyPolicy.GetModel(),
 		PolicyEnabled:            policyEnabled,
 	}
 
 	var (
-		desiredCIDRPolicy *policy.CIDRPolicy
-		desiredL4Policy   *policy.L4Policy
+		desiredCIDRPolicy     *policy.CIDRPolicy
+		desiredL4Policy       *policy.L4Policy
+		desiredCIDRDenyPolicy *policy.CIDRPolicy
+		desiredL4DenyPolicy   *policy.L4Policy
 	)
 	if e.desiredPolicy != nil {
 		desiredCIDRPolicy = e.desiredPolicy.CIDRPolicy
 		desiredL4Policy = e.desiredPolicy.L4Policy
+		desiredCIDRDenyPolicy = e.desiredPolicy.CIDRPolicyDeny
+		desiredL4DenyPolicy = e.desiredPolicy.L4PolicyDeny
 	}
 
 	desiredMdl := &models.EndpointPolicy{
@@ -396,8 +416,12 @@ func (e *Endpoint) GetPolicyModel() *models.EndpointPolicyStatus {
 		PolicyRevision:           int64(e.nextPolicyRevision),
 		AllowedIngressIdentities: desiredIngressIdentities,
 		AllowedEgressIdentities:  desiredEgressIdentities,
+		DeniedIngressIdentities:  desiredDenyIngressIdentities,
+		DeniedEgressIdentities:   desiredDenyEgressIdentities,
 		CidrPolicy:               desiredCIDRPolicy.GetModel(),
+		CidrDenyPolicy:           desiredCIDRDenyPolicy.GetModel(),
 		L4:                       desiredL4Policy.GetModel(),
+		L4Deny:                   desiredL4DenyPolicy.GetModel(),
 		PolicyEnabled:            policyEnabled,
 	}
 	// FIXME GH-3280 Once we start returning revisions Realized should be the

@@ -319,7 +319,7 @@ func (d *policyDistillery) distillPolicy(owner PolicyOwner, epLabels labels.Labe
 	if !endpointSelected {
 		allowAllIngress := true
 		allowAllEgress := false // Skip egress
-		result.AllowAllIdentities(allowAllIngress, allowAllEgress)
+		result.AllowAllIdentities(allowAllIngress, allowAllEgress, false)
 		return result, nil
 	}
 
@@ -330,7 +330,7 @@ func (d *policyDistillery) distillPolicy(owner PolicyOwner, epLabels labels.Labe
 	}
 	ingressL4.Logging = stdlog.New(d.log, "", 0)
 	io.WriteString(d.log, fmt.Sprintf("[distill] Evaluating L4 -> %s", epLabels))
-	l4IngressPolicy, err := d.Repository.ResolveL4IngressPolicy(&ingressL4)
+	l4IngressPolicy, l4IngressDenyPolicy, err := d.Repository.ResolveL4IngressPolicy(&ingressL4)
 	if err != nil {
 		return nil, err
 	}
@@ -345,6 +345,7 @@ func (d *policyDistillery) distillPolicy(owner PolicyOwner, epLabels labels.Labe
 		}
 	}
 	l4IngressPolicy.Detach(d.Repository.GetSelectorCache())
+	l4IngressDenyPolicy.Detach(d.Repository.GetSelectorCache())
 	return result, nil
 }
 

@@ -172,9 +172,15 @@ func updateLabels(allocator cache.IdentityAllocator, allowedIdentityTuple *ciliu
 	}
 }
 
-// populateResponseWithPolicyKey inserts an AllowedIdentityTuple element into 'policy'
-// which corresponds to the specified 'desiredPolicy'.
-func populateResponseWithPolicyKey(allocator cache.IdentityAllocator, policy *cilium_v2.EndpointPolicy, policyKey *policy.Key) {
+// populateResponseWithPolicyKey inserts an AllowedIdentityTuple element into
+// 'policy' which corresponds to the specified 'desiredPolicy'. If 'isDeny' is
+// true, it will insert the policyKey into the 'Denied'.
+func populateResponseWithPolicyKey(
+	allocator cache.IdentityAllocator,
+	policy *cilium_v2.EndpointPolicy,
+	policyKey *policy.Key,
+	isDeny bool,
+) {
 	allowedIdentityTuple := cilium_v2.AllowedIdentityTuple{
 		DestPort: policyKey.DestPort,
 		Protocol: policyKey.Nexthdr,
@@ -186,48 +192,69 @@ func populateResponseWithPolicyKey(allocator cache.IdentityAllocator, policy *ci
 
 	switch {
 	case policyKey.IsIngress():
-		if policy.Ingress.Allowed == nil {
-			policy.Ingress.Allowed = cilium_v2.AllowedIdentityList{allowedIdentityTuple}
+		if !isDeny {
+			if policy.Ingress.Allowed == nil {
+				policy.Ingress.Allowed = cilium_v2.AllowedIdentityList{allowedIdentityTuple}
+			} else {
+				policy.Ingress.Allowed = append(policy.Ingress.Allowed, allowedIdentityTuple)
+			}
 		} else {
-			policy.Ingress.Allowed = append(policy.Ingress.Allowed, allowedIdentityTuple)
+			if policy.Ingress.Denied == nil {
+				policy.Ingress.Denied = cilium_v2.AllowedIdentityList{allowedIdentityTuple}
+			} else {
+				policy.Ingress.Denied = append(policy.Ingress.Denied, allowedIdentityTuple)
+			}
 		}
 	case policyKey.IsEgress():
-		if policy.Egress.Allowed == nil {
-			policy.Egress.Allowed = cilium_v2.AllowedIdentityList{allowedIdentityTuple}
+		if !isDeny {
+			if policy.Egress.Allowed == nil {
+				policy.Egress.Allowed = cilium_v2.AllowedIdentityList{allowedIdentityTuple}
+			} else {
+				policy.Egress.Allowed = append(policy.Egress.Allowed, allowedIdentityTuple)
+			}
 		} else {
-			policy.Egress.Allowed = append(policy.Egress.Allowed, allowedIdentityTuple)
+			if policy.Egress.Denied == nil {
+				policy.Egress.Denied = cilium_v2.AllowedIdentityList{allowedIdentityTuple}
+			} else {
+				policy.Egress.Denied = append(policy.Egress.Denied, allowedIdentityTuple)
+			}
 		}
 	}
 }
 
 // getEndpointPolicy returns an API representation of the policy that the
 // received Endpoint intends to apply.
-func (e *Endpoint) getEndpointPolicy() (policy *cilium_v2.EndpointPolicy) {
-	if e.desiredPolicy != nil {
-		policy = &cilium_v2.EndpointPolicy{
-			Ingress: &cilium_v2.EndpointPolicyDirection{
-				Enforcing: !e.Options.IsEnabled(option.PolicyAuditMode) && e.desiredPolicy.IngressPolicyEnabled,
-			},
-			Egress: &cilium_v2.EndpointPolicyDirection{
-				Enforcing: !e.Options.IsEnabled(option.PolicyAuditMode) && e.desiredPolicy.EgressPolicyEnabled,
-			},
-		}
+func (e *Endpoint) getEndpointPolicy() (ep *cilium_v2.EndpointPolicy) {
+	if e.desiredPolicy == nil {
+		return
+	}
+	ep = &cilium_v2.EndpointPolicy{
+		Ingress: &cilium_v2.EndpointPolicyDirection{
+			Enforcing: !e.Options.IsEnabled(option.PolicyAuditMode) && e.desiredPolicy.IngressPolicyEnabled,
+		},
+		Egress: &cilium_v2.EndpointPolicyDirection{
+			Enforcing: !e.Options.IsEnabled(option.PolicyAuditMode) && e.desiredPolicy.EgressPolicyEnabled,
+		},
+	}
 
-		// Handle allow-all cases
-		allowsAllIngress, allowsAllEgress := e.desiredPolicy.AllowsIdentity(identity.IdentityUnknown)
-		if allowsAllIngress {
-			policy.Ingress.Allowed = cilium_v2.AllowedIdentityList{{}}
-		}
-		if allowsAllEgress {
-			policy.Egress.Allowed = cilium_v2.AllowedIdentityList{{}}
-		}
+	// Handle allow-all cases
+	allowsAllIngress, allowsAllEgress := e.desiredPolicy.AllowsIdentity(identity.IdentityUnknown)
+	if allowsAllIngress {
+		ep.Ingress.Allowed = cilium_v2.AllowedIdentityList{{}}
+		ep.Ingress.Denied = cilium_v2.AllowedIdentityList{{}}
+	}
+	if allowsAllEgress {
+		ep.Egress.Allowed = cilium_v2.AllowedIdentityList{{}}
+		ep.Egress.Denied = cilium_v2.AllowedIdentityList{{}}
+	}
 
-		// If either ingress or egress policy is enabled, go through
-		// the desired policy to populate the values.
-		if !allowsAllIngress || !allowsAllEgress {
-			allowsWorldIngress, allowsWorldEgress := e.desiredPolicy.AllowsIdentity(identity.ReservedIdentityWorld)
+	// If either ingress or egress policy is enabled, go through
+	// the desired policy to populate the values.
+	if !allowsAllIngress || !allowsAllEgress {
+		allowsWorldIngress, allowsWorldEgress := e.desiredPolicy.AllowsIdentity(identity.ReservedIdentityWorld)
 
-			for policyKey := range e.desiredPolicy.PolicyMapState {
+		populateResponse := func(ms policy.MapState, isDeny bool) {
+			for policyKey := range ms {
 				// Skip listing identities if enforcement is disabled in direction,
 				// or if the identity corresponds to a CIDR identity and the world is allowed.
 				id := identity.NumericIdentity(policyKey.Identity)
@@ -242,16 +269,25 @@ func (e *Endpoint) getEndpointPolicy() (policy *cilium_v2.EndpointPolicy) {
 					}
 				}
 
-				populateResponseWithPolicyKey(e.allocator, policy, &policyKey)
+				populateResponseWithPolicyKey(e.allocator, ep, &policyKey, isDeny)
 			}
+			return
 		}
+		populateResponse(e.desiredPolicy.PolicyMapState, false)
+		populateResponse(e.desiredPolicy.PolicyDenyMapState, true)
+	}
 
-		if policy.Ingress.Allowed != nil {
-			policy.Ingress.Allowed.Sort()
-		}
-		if policy.Egress.Allowed != nil {
-			policy.Egress.Allowed.Sort()
-		}
+	if ep.Ingress.Allowed != nil {
+		ep.Ingress.Allowed.Sort()
+	}
+	if ep.Ingress.Denied != nil {
+		ep.Ingress.Denied.Sort()
+	}
+	if ep.Egress.Allowed != nil {
+		ep.Egress.Allowed.Sort()
+	}
+	if ep.Egress.Denied != nil {
+		ep.Egress.Denied.Sort()
 	}
 
 	return

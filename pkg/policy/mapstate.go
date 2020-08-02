@@ -137,16 +137,24 @@ func (keys MapState) RedirectPreferredInsert(key Key, entry MapStateEntry) {
 // from the localhost. It inserts the Key corresponding to the localhost in
 // the desiredPolicyKeys if the localhost is allowed to communicate with the
 // endpoint.
-func (keys MapState) DetermineAllowLocalhostIngress(l4Policy *L4Policy) {
+func (keys MapState) DetermineAllowLocalhostIngress(isDeny bool) {
 	if option.Config.AlwaysAllowLocalhost() {
 		derivedFrom := labels.LabelArrayList{
 			labels.LabelArray{
 				labels.NewLabel(LabelKeyPolicyDerivedFrom, LabelAllowLocalHostIngress, labels.LabelSourceReserved),
 			},
 		}
-		keys[localHostKey] = NewMapStateEntry(derivedFrom, false)
-		if !option.Config.EnableRemoteNodeIdentity {
-			keys[localRemoteNodeKey] = NewMapStateEntry(derivedFrom, false)
+		if !isDeny {
+			keys[localHostKey] = NewMapStateEntry(derivedFrom, false)
+			if !option.Config.EnableRemoteNodeIdentity {
+				keys[localRemoteNodeKey] = NewMapStateEntry(derivedFrom, false)
+			}
+		} else {
+			// For the policy deny we will delete it from the map.
+			delete(keys, localHostKey)
+			if !option.Config.EnableRemoteNodeIdentity {
+				delete(keys, localRemoteNodeKey)
+			}
 		}
 	}
 }
@@ -154,7 +162,18 @@ func (keys MapState) DetermineAllowLocalhostIngress(l4Policy *L4Policy) {
 // AllowAllIdentities translates all identities in selectorCache to their
 // corresponding Keys in the specified direction (ingress, egress) which allows
 // all at L3.
-func (keys MapState) AllowAllIdentities(ingress, egress bool) {
+func (keys MapState) AllowAllIdentities(ingress, egress, isDeny bool) {
+	if isDeny {
+		// Clean up all keys
+		for k := range keys {
+			if ingress && k.TrafficDirection == trafficdirection.Ingress.Uint8() ||
+				egress && k.TrafficDirection == trafficdirection.Egress.Uint8() {
+
+				delete(keys, k)
+			}
+		}
+		return
+	}
 	if ingress {
 		keyToAdd := Key{
 			Identity:         0,

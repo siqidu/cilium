@@ -1,4 +1,4 @@
-// Copyright 2018-2019 Authors of Cilium
+// Copyright 2018-2020 Authors of Cilium
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,10 +31,12 @@ type selectorPolicy struct {
 	SelectorCache *SelectorCache
 
 	// L4Policy contains the computed L4 and L7 policy.
-	L4Policy *L4Policy
+	L4Policy     *L4Policy
+	L4PolicyDeny *L4Policy
 
 	// CIDRPolicy contains the L3 (not L4) CIDR-based policy.
-	CIDRPolicy *CIDRPolicy
+	CIDRPolicy     *CIDRPolicy
+	CIDRPolicyDeny *CIDRPolicy
 
 	// IngressPolicyEnabled specifies whether this policy contains any policy
 	// at ingress.
@@ -48,6 +50,9 @@ type selectorPolicy struct {
 func (p *selectorPolicy) Attach(ctx PolicyContext) {
 	if p.L4Policy != nil {
 		p.L4Policy.Attach(ctx)
+	}
+	if p.L4PolicyDeny != nil {
+		p.L4PolicyDeny.Attach(ctx)
 	}
 }
 
@@ -65,10 +70,12 @@ type EndpointPolicy struct {
 	// It maps each Key to the proxy port if proxy redirection is needed.
 	// Proxy port 0 indicates no proxy redirection.
 	// All fields within the Key and the proxy port must be in host byte-order.
-	PolicyMapState MapState
+	PolicyMapState     MapState
+	PolicyDenyMapState MapState
 
 	// policyMapChanges collects pending changes to the PolicyMapState
-	policyMapChanges MapChanges
+	policyMapChanges     MapChanges
+	policyDenyMapChanges MapChanges
 
 	// PolicyOwner describes any type which consumes this EndpointPolicy object.
 	PolicyOwner PolicyOwner
@@ -96,6 +103,9 @@ func (p *selectorPolicy) insertUser(user *EndpointPolicy) {
 	if p.L4Policy != nil {
 		p.L4Policy.insertUser(user)
 	}
+	if p.L4PolicyDeny != nil {
+		p.L4PolicyDeny.insertUser(user)
+	}
 }
 
 // Detach releases resources held by a selectorPolicy to enable
@@ -104,6 +114,9 @@ func (p *selectorPolicy) insertUser(user *EndpointPolicy) {
 func (p *selectorPolicy) Detach() {
 	if p.L4Policy != nil {
 		p.L4Policy.Detach(p.SelectorCache)
+	}
+	if p.L4PolicyDeny != nil {
+		p.L4PolicyDeny.Detach(p.SelectorCache)
 	}
 }
 
@@ -115,14 +128,21 @@ func (p *selectorPolicy) Detach() {
 // PolicyOwner (aka Endpoint) is also locked during this call.
 func (p *selectorPolicy) DistillPolicy(policyOwner PolicyOwner, isHost bool) *EndpointPolicy {
 	calculatedPolicy := &EndpointPolicy{
-		selectorPolicy: p,
-		PolicyMapState: make(MapState),
-		PolicyOwner:    policyOwner,
+		selectorPolicy:     p,
+		PolicyMapState:     make(MapState),
+		PolicyDenyMapState: make(MapState),
+		PolicyOwner:        policyOwner,
 	}
 
 	if !p.IngressPolicyEnabled || !p.EgressPolicyEnabled {
+		// Allow all identities available if either ingress policy or egress
+		// are disabled. Since the PolicyMapDeny drops a packet if an identity
+		// exists we will remove all identities in the deny map to avoid traffic
+		// drops in case the policy is disabled.
 		calculatedPolicy.PolicyMapState.AllowAllIdentities(
-			!p.IngressPolicyEnabled, !p.EgressPolicyEnabled)
+			!p.IngressPolicyEnabled, !p.EgressPolicyEnabled, false)
+		calculatedPolicy.PolicyDenyMapState.AllowAllIdentities(
+			!p.IngressPolicyEnabled, !p.EgressPolicyEnabled, true)
 	}
 
 	// Register the new EndpointPolicy as a receiver of delta
@@ -142,7 +162,8 @@ func (p *selectorPolicy) DistillPolicy(policyOwner PolicyOwner, isHost bool) *En
 	// after the computation of PolicyMapState has started.
 	calculatedPolicy.computeDesiredL4PolicyMapEntries()
 	if !isHost {
-		calculatedPolicy.PolicyMapState.DetermineAllowLocalhostIngress(p.L4Policy)
+		calculatedPolicy.PolicyMapState.DetermineAllowLocalhostIngress(false)
+		calculatedPolicy.PolicyDenyMapState.DetermineAllowLocalhostIngress(true)
 	}
 
 	return calculatedPolicy
@@ -155,11 +176,13 @@ func (p *EndpointPolicy) computeDesiredL4PolicyMapEntries() {
 	if p.L4Policy == nil {
 		return
 	}
-	p.computeDirectionL4PolicyMapEntries(p.L4Policy.Ingress, trafficdirection.Ingress)
-	p.computeDirectionL4PolicyMapEntries(p.L4Policy.Egress, trafficdirection.Egress)
+	p.computeDirectionL4PolicyMapEntries(p.PolicyMapState, p.L4Policy.Ingress, trafficdirection.Ingress)
+	p.computeDirectionL4PolicyMapEntries(p.PolicyMapState, p.L4Policy.Egress, trafficdirection.Egress)
+	p.computeDirectionL4PolicyMapEntries(p.PolicyDenyMapState, p.L4PolicyDeny.Ingress, trafficdirection.Ingress)
+	p.computeDirectionL4PolicyMapEntries(p.PolicyDenyMapState, p.L4PolicyDeny.Egress, trafficdirection.Egress)
 }
 
-func (p *EndpointPolicy) computeDirectionL4PolicyMapEntries(l4PolicyMap L4PolicyMap, direction trafficdirection.TrafficDirection) {
+func (p *EndpointPolicy) computeDirectionL4PolicyMapEntries(policyMapState MapState, l4PolicyMap L4PolicyMap, direction trafficdirection.TrafficDirection) {
 	for _, filter := range l4PolicyMap {
 		lookupDone := false
 		proxyport := uint16(0)
@@ -183,7 +206,7 @@ func (p *EndpointPolicy) computeDirectionL4PolicyMapEntries(l4PolicyMap L4Policy
 					continue
 				}
 			}
-			p.PolicyMapState[keyFromFilter] = entry
+			policyMapState[keyFromFilter] = entry
 		}
 	}
 }
@@ -191,10 +214,12 @@ func (p *EndpointPolicy) computeDirectionL4PolicyMapEntries(l4PolicyMap L4Policy
 // ConsumeMapChanges transfers the changes from MapChanges to the caller,
 // locking the selector cache to make sure concurrent identity updates
 // have completed.
-func (p *EndpointPolicy) ConsumeMapChanges() (adds, deletes MapState) {
+func (p *EndpointPolicy) ConsumeMapChanges() (allowAdds, allowDeletes, denyAdds, denyDeletes MapState) {
 	p.selectorPolicy.SelectorCache.mutex.Lock()
 	defer p.selectorPolicy.SelectorCache.mutex.Unlock()
-	return p.policyMapChanges.consumeMapChanges()
+	allowAdd, allowDel := p.policyMapChanges.consumeMapChanges()
+	denyAdd, denyDel := p.policyDenyMapChanges.consumeMapChanges()
+	return allowAdd, allowDel, denyAdd, denyDel
 }
 
 // AllowsIdentity returns whether the specified policy allows
@@ -207,13 +232,27 @@ func (p *EndpointPolicy) AllowsIdentity(identity identity.NumericIdentity) (ingr
 		Identity: uint32(identity),
 	}
 
-	key.TrafficDirection = trafficdirection.Ingress.Uint8()
-	if _, ok := p.PolicyMapState[key]; ok || !p.IngressPolicyEnabled {
+	if !p.IngressPolicyEnabled {
 		ingress = true
+	} else {
+		key.TrafficDirection = trafficdirection.Ingress.Uint8()
+		_, denied := p.PolicyDenyMapState[key]
+		if !denied {
+			if _, allowed := p.PolicyMapState[key]; allowed {
+				ingress = true
+			}
+		}
 	}
-	key.TrafficDirection = trafficdirection.Egress.Uint8()
-	if _, ok := p.PolicyMapState[key]; ok || !p.EgressPolicyEnabled {
+	if !p.EgressPolicyEnabled {
 		egress = true
+	} else {
+		key.TrafficDirection = trafficdirection.Egress.Uint8()
+		_, denied := p.PolicyDenyMapState[key]
+		if !denied {
+			if _, allowed := p.PolicyMapState[key]; allowed {
+				egress = true
+			}
+		}
 	}
 
 	return ingress, egress

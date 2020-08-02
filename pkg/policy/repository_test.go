@@ -1,4 +1,4 @@
-// Copyright 2016-2019 Authors of Cilium
+// Copyright 2016-2020 Authors of Cilium
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -652,7 +652,7 @@ func (ds *PolicyTestSuite) TestWildcardL3RulesIngress(c *C) {
 	repo.Mutex.RLock()
 	defer repo.Mutex.RUnlock()
 
-	policy, err := repo.ResolveL4IngressPolicy(ctx)
+	policy, policyDeny, err := repo.ResolveL4IngressPolicy(ctx)
 	c.Assert(err, IsNil)
 
 	expectedPolicy := L4PolicyMap{
@@ -714,7 +714,9 @@ func (ds *PolicyTestSuite) TestWildcardL3RulesIngress(c *C) {
 		},
 	}
 	c.Assert(policy, checker.Equals, expectedPolicy)
+	c.Assert(policyDeny, checker.Equals, L4PolicyMap{})
 	policy.Detach(repo.GetSelectorCache())
+	policyDeny.Detach(repo.GetSelectorCache())
 }
 
 func (ds *PolicyTestSuite) TestWildcardL4RulesIngress(c *C) {
@@ -818,7 +820,7 @@ func (ds *PolicyTestSuite) TestWildcardL4RulesIngress(c *C) {
 	repo.Mutex.RLock()
 	defer repo.Mutex.RUnlock()
 
-	policy, err := repo.ResolveL4IngressPolicy(ctx)
+	policy, policyDeny, err := repo.ResolveL4IngressPolicy(ctx)
 	c.Assert(err, IsNil)
 
 	expectedPolicy := L4PolicyMap{
@@ -856,7 +858,9 @@ func (ds *PolicyTestSuite) TestWildcardL4RulesIngress(c *C) {
 		},
 	}
 	c.Assert(policy, checker.Equals, expectedPolicy)
+	c.Assert(policyDeny, checker.Equals, L4PolicyMap{})
 	policy.Detach(repo.GetSelectorCache())
+	policyDeny.Detach(repo.GetSelectorCache())
 }
 
 func (ds *PolicyTestSuite) TestL3DependentL4IngressFromRequires(c *C) {
@@ -896,7 +900,7 @@ func (ds *PolicyTestSuite) TestL3DependentL4IngressFromRequires(c *C) {
 	repo.Mutex.RLock()
 	defer repo.Mutex.RUnlock()
 
-	policy, err := repo.ResolveL4IngressPolicy(ctx)
+	policy, policyDeny, err := repo.ResolveL4IngressPolicy(ctx)
 	c.Assert(err, IsNil)
 
 	expectedSelector := api.NewESFromMatchRequirements(map[string]string{"any.id": "bar1"}, []slim_metav1.LabelSelectorRequirement{
@@ -921,7 +925,9 @@ func (ds *PolicyTestSuite) TestL3DependentL4IngressFromRequires(c *C) {
 		},
 	}
 	c.Assert(policy, checker.Equals, expectedPolicy)
+	c.Assert(policyDeny, checker.Equals, L4PolicyMap{})
 	policy.Detach(repo.GetSelectorCache())
+	policyDeny.Detach(repo.GetSelectorCache())
 }
 
 func (ds *PolicyTestSuite) TestL3DependentL4EgressFromRequires(c *C) {
@@ -965,7 +971,7 @@ func (ds *PolicyTestSuite) TestL3DependentL4EgressFromRequires(c *C) {
 	defer repo.Mutex.RUnlock()
 
 	logBuffer := new(bytes.Buffer)
-	policy, err := repo.ResolveL4EgressPolicy(ctx.WithLogger(logBuffer))
+	policy, policyDeny, err := repo.ResolveL4EgressPolicy(ctx.WithLogger(logBuffer))
 	c.Assert(err, IsNil)
 
 	expectedSelector := api.NewESFromMatchRequirements(map[string]string{"any.id": "bar1"}, []slim_metav1.LabelSelectorRequirement{
@@ -1008,7 +1014,9 @@ func (ds *PolicyTestSuite) TestL3DependentL4EgressFromRequires(c *C) {
 	if !c.Check(policy, checker.Equals, expectedPolicy) {
 		c.Errorf("Policy doesn't match expected:\n%s", logBuffer.String())
 	}
+	c.Assert(policyDeny, checker.Equals, L4PolicyMap{})
 	policy.Detach(repo.GetSelectorCache())
+	policyDeny.Detach(repo.GetSelectorCache())
 }
 
 func (ds *PolicyTestSuite) TestWildcardL3RulesEgress(c *C) {
@@ -1089,7 +1097,7 @@ func (ds *PolicyTestSuite) TestWildcardL3RulesEgress(c *C) {
 	defer repo.Mutex.RUnlock()
 
 	logBuffer := new(bytes.Buffer)
-	policy, err := repo.ResolveL4EgressPolicy(ctx.WithLogger(logBuffer))
+	policy, policyDeny, err := repo.ResolveL4EgressPolicy(ctx.WithLogger(logBuffer))
 	c.Assert(err, IsNil)
 
 	// Traffic to bar1 should not be forwarded to the DNS or HTTP
@@ -1142,7 +1150,9 @@ func (ds *PolicyTestSuite) TestWildcardL3RulesEgress(c *C) {
 		c.Logf("%s", logBuffer.String())
 		c.Errorf("Resolved policy did not match expected: \n%s", err)
 	}
+	c.Assert(policyDeny, checker.Equals, L4PolicyMap{})
 	policy.Detach(repo.GetSelectorCache())
+	policyDeny.Detach(repo.GetSelectorCache())
 }
 
 func (ds *PolicyTestSuite) TestWildcardL4RulesEgress(c *C) {
@@ -1247,7 +1257,7 @@ func (ds *PolicyTestSuite) TestWildcardL4RulesEgress(c *C) {
 	defer repo.Mutex.RUnlock()
 
 	logBuffer := new(bytes.Buffer)
-	policy, err := repo.ResolveL4EgressPolicy(ctx.WithLogger(logBuffer))
+	policy, policyDeny, err := repo.ResolveL4EgressPolicy(ctx.WithLogger(logBuffer))
 	c.Assert(err, IsNil)
 
 	// Bar1 should not be forwarded to the proxy, but if it is (e.g., for visibility),
@@ -1290,7 +1300,9 @@ func (ds *PolicyTestSuite) TestWildcardL4RulesEgress(c *C) {
 		c.Logf("%s", logBuffer.String())
 		c.Errorf("Resolved policy did not match expected: \n%s", err)
 	}
+	c.Assert(policyDeny, checker.Equals, L4PolicyMap{})
 	policy.Detach(repo.GetSelectorCache())
+	policyDeny.Detach(repo.GetSelectorCache())
 }
 
 func (ds *PolicyTestSuite) TestWildcardCIDRRulesEgress(c *C) {
@@ -1361,7 +1373,7 @@ func (ds *PolicyTestSuite) TestWildcardCIDRRulesEgress(c *C) {
 	defer repo.Mutex.RUnlock()
 
 	logBuffer := new(bytes.Buffer)
-	policy, err := repo.ResolveL4EgressPolicy(ctx.WithLogger(logBuffer))
+	policy, policyDeny, err := repo.ResolveL4EgressPolicy(ctx.WithLogger(logBuffer))
 	c.Assert(err, IsNil)
 
 	// Port 80 policy does not need the wildcard, as the "0" port policy will allow the traffic.
@@ -1402,7 +1414,9 @@ func (ds *PolicyTestSuite) TestWildcardCIDRRulesEgress(c *C) {
 		c.Logf("%s", logBuffer.String())
 		c.Errorf("Resolved policy did not match expected: \n%s", err)
 	}
+	c.Assert(policyDeny, checker.Equals, L4PolicyMap{})
 	policy.Detach(repo.GetSelectorCache())
+	policyDeny.Detach(repo.GetSelectorCache())
 }
 
 func (ds *PolicyTestSuite) TestWildcardL3RulesIngressFromEntities(c *C) {
@@ -1481,7 +1495,7 @@ func (ds *PolicyTestSuite) TestWildcardL3RulesIngressFromEntities(c *C) {
 	repo.Mutex.RLock()
 	defer repo.Mutex.RUnlock()
 
-	policy, err := repo.ResolveL4IngressPolicy(ctx)
+	policy, policyDeny, err := repo.ResolveL4IngressPolicy(ctx)
 	c.Assert(err, IsNil)
 	c.Assert(len(policy), Equals, 3)
 	selWorld := api.EntitySelectorMapping[api.EntityWorld][0]
@@ -1534,7 +1548,9 @@ func (ds *PolicyTestSuite) TestWildcardL3RulesIngressFromEntities(c *C) {
 	}
 
 	c.Assert(policy, checker.Equals, expectedPolicy)
+	c.Assert(policyDeny, checker.Equals, L4PolicyMap{})
 	policy.Detach(repo.GetSelectorCache())
+	policyDeny.Detach(repo.GetSelectorCache())
 }
 
 func (ds *PolicyTestSuite) TestWildcardL3RulesEgressToEntities(c *C) {
@@ -1613,7 +1629,7 @@ func (ds *PolicyTestSuite) TestWildcardL3RulesEgressToEntities(c *C) {
 	repo.Mutex.RLock()
 	defer repo.Mutex.RUnlock()
 
-	policy, err := repo.ResolveL4EgressPolicy(ctx)
+	policy, policyDeny, err := repo.ResolveL4EgressPolicy(ctx)
 	c.Assert(err, IsNil)
 	c.Assert(len(policy), Equals, 3)
 	selWorld := api.EntitySelectorMapping[api.EntityWorld][0]
@@ -1666,7 +1682,9 @@ func (ds *PolicyTestSuite) TestWildcardL3RulesEgressToEntities(c *C) {
 	}
 
 	c.Assert(policy, checker.Equals, expectedPolicy)
+	c.Assert(policyDeny, checker.Equals, L4PolicyMap{})
 	policy.Detach(repo.GetSelectorCache())
+	policyDeny.Detach(repo.GetSelectorCache())
 }
 
 func (ds *PolicyTestSuite) TestMinikubeGettingStarted(c *C) {
@@ -1760,7 +1778,7 @@ func (ds *PolicyTestSuite) TestMinikubeGettingStarted(c *C) {
 
 	// L4 from app2 is restricted
 	logBuffer := new(bytes.Buffer)
-	l4IngressPolicy, err := repo.ResolveL4IngressPolicy(fromApp2.WithLogger(logBuffer))
+	l4IngressPolicy, l4IngressDenyPolicy, err := repo.ResolveL4IngressPolicy(fromApp2.WithLogger(logBuffer))
 	c.Assert(err, IsNil)
 
 	cachedSelectorApp2 := testSelectorCache.FindCachedIdentitySelector(selFromApp2)
@@ -1786,15 +1804,18 @@ func (ds *PolicyTestSuite) TestMinikubeGettingStarted(c *C) {
 		c.Errorf("Resolved policy did not match expected: \n%s", err)
 	}
 	l4IngressPolicy.Detach(testSelectorCache)
+	l4IngressDenyPolicy.Detach(testSelectorCache)
 	expected.Detach(testSelectorCache)
 
 	// L4 from app3 has no rules
 	expected = NewL4Policy(repo.GetRevision())
-	l4IngressPolicy, err = repo.ResolveL4IngressPolicy(fromApp3)
+	l4IngressPolicy, l4IngressDenyPolicy, err = repo.ResolveL4IngressPolicy(fromApp3)
 	c.Assert(err, IsNil)
 	c.Assert(len(l4IngressPolicy), Equals, 0)
 	c.Assert(l4IngressPolicy, checker.Equals, expected.Ingress)
+	c.Assert(l4IngressDenyPolicy, checker.Equals, L4PolicyMap{})
 	l4IngressPolicy.Detach(testSelectorCache)
+	l4IngressDenyPolicy.Detach(testSelectorCache)
 	expected.Detach(testSelectorCache)
 }
 
@@ -1866,6 +1887,7 @@ Resolving ingress policy for [any:bar]
       Found all required labels
 1/1 rules selected
 Found allow rule
+Found no deny rule
 Ingress verdict: allowed
 `
 	ctx := buildSearchCtx("foo", "bar", 0)
@@ -1881,6 +1903,7 @@ Ingress verdict: allowed
 Resolving ingress policy for [any:foo]
 0/1 rules selected
 Found no allow rule
+Found no deny rule
 Ingress verdict: denied
 `
 	repo.checkTrace(c, ctx, expectedOut, api.Denied)
@@ -1909,6 +1932,7 @@ Resolving ingress policy for [any:bar]
       Allows port [{80 ANY}]
 2/2 rules selected
 Found allow rule
+Found no deny rule
 Ingress verdict: allowed
 `
 	repo.checkTrace(c, ctx, expectedOut, api.Allowed)
@@ -1927,6 +1951,7 @@ Resolving ingress policy for [any:bar]
       No label match for [any:bar]
 2/2 rules selected
 Found no allow rule
+Found no deny rule
 Ingress verdict: denied
 `
 	repo.checkTrace(c, ctx, expectedOut, api.Denied)
@@ -1960,6 +1985,7 @@ Resolving ingress policy for [any:bar]
 * Rule {"matchLabels":{"any:bar":""}}: selected
 3/3 rules selected
 Found no allow rule
+Found no deny rule
 Ingress verdict: denied
 `
 	repo.checkTrace(c, ctx, expectedOut, api.Denied)
@@ -1983,6 +2009,7 @@ Resolving ingress policy for [any:bar]
 * Rule {"matchLabels":{"any:bar":""}}: selected
 3/3 rules selected
 Found no allow rule
+Found no deny rule
 Ingress verdict: denied
 `
 	repo.checkTrace(c, ctx, expectedOut, api.Denied)

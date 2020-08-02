@@ -511,6 +511,13 @@ func (in *EndpointPolicyDirection) DeepEqual(other *EndpointPolicyDirection) boo
 		}
 	}
 
+	if ((in.Denied != nil) && (other.Denied != nil)) || ((in.Denied == nil) != (other.Denied == nil)) {
+		in, other := &in.Denied, &other.Denied
+		if other == nil || !in.DeepEqual(other) {
+			return false
+		}
+	}
+
 	if ((in.Removing != nil) && (other.Removing != nil)) || ((in.Removing == nil) != (other.Removing == nil)) {
 		in, other := &in.Removing, &other.Removing
 		if other == nil || !in.DeepEqual(other) {
