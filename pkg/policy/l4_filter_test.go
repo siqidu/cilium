@@ -148,7 +148,9 @@ func (ds *PolicyTestSuite) TestMergeAllowAllL3AndAllowAllL7(c *C) {
 		EndpointSelector: endpointSelectorA,
 		Ingress: []api.IngressRule{
 			{
-				FromEndpoints: []api.EndpointSelector{api.WildcardEndpointSelector},
+				IngressCommonRule: api.IngressCommonRule{
+					FromEndpoints: []api.EndpointSelector{api.WildcardEndpointSelector},
+				},
 				ToPorts: []api.PortRule{{
 					Ports: []api.PortProtocol{
 						{Port: "80", Protocol: api.ProtoTCP},
@@ -156,7 +158,9 @@ func (ds *PolicyTestSuite) TestMergeAllowAllL3AndAllowAllL7(c *C) {
 				}},
 			},
 			{
-				FromEndpoints: []api.EndpointSelector{api.WildcardEndpointSelector},
+				IngressCommonRule: api.IngressCommonRule{
+					FromEndpoints: []api.EndpointSelector{api.WildcardEndpointSelector},
+				},
 				ToPorts: []api.PortRule{{
 					Ports: []api.PortProtocol{
 						{Port: "80", Protocol: api.ProtoTCP},
@@ -193,7 +197,9 @@ func (ds *PolicyTestSuite) TestMergeAllowAllL3AndAllowAllL7(c *C) {
 		EndpointSelector: endpointSelectorA,
 		Ingress: []api.IngressRule{
 			{
-				FromEndpoints: []api.EndpointSelector{},
+				IngressCommonRule: api.IngressCommonRule{
+					FromEndpoints: []api.EndpointSelector{},
+				},
 				ToPorts: []api.PortRule{{
 					Ports: []api.PortProtocol{
 						{Port: "80", Protocol: api.ProtoTCP},
@@ -201,7 +207,9 @@ func (ds *PolicyTestSuite) TestMergeAllowAllL3AndAllowAllL7(c *C) {
 				}},
 			},
 			{
-				FromEndpoints: []api.EndpointSelector{},
+				IngressCommonRule: api.IngressCommonRule{
+					FromEndpoints: []api.EndpointSelector{},
+				},
 				ToPorts: []api.PortRule{{
 					Ports: []api.PortProtocol{
 						{Port: "80", Protocol: api.ProtoTCP},
@@ -244,7 +252,9 @@ func (ds *PolicyTestSuite) TestMergeAllowAllL3AndShadowedL7(c *C) {
 			EndpointSelector: endpointSelectorA,
 			Ingress: []api.IngressRule{
 				{
-					FromEndpoints: []api.EndpointSelector{api.WildcardEndpointSelector},
+					IngressCommonRule: api.IngressCommonRule{
+						FromEndpoints: []api.EndpointSelector{api.WildcardEndpointSelector},
+					},
 					ToPorts: []api.PortRule{{
 						Ports: []api.PortProtocol{
 							{Port: "80", Protocol: api.ProtoTCP},
@@ -252,7 +262,9 @@ func (ds *PolicyTestSuite) TestMergeAllowAllL3AndShadowedL7(c *C) {
 					}},
 				},
 				{
-					FromEndpoints: []api.EndpointSelector{api.WildcardEndpointSelector},
+					IngressCommonRule: api.IngressCommonRule{
+						FromEndpoints: []api.EndpointSelector{api.WildcardEndpointSelector},
+					},
 					ToPorts: []api.PortRule{{
 						Ports: []api.PortProtocol{
 							{Port: "80", Protocol: api.ProtoTCP},
@@ -310,7 +322,9 @@ func (ds *PolicyTestSuite) TestMergeAllowAllL3AndShadowedL7(c *C) {
 		EndpointSelector: endpointSelectorA,
 		Ingress: []api.IngressRule{
 			{
-				FromEndpoints: []api.EndpointSelector{api.WildcardEndpointSelector},
+				IngressCommonRule: api.IngressCommonRule{
+					FromEndpoints: []api.EndpointSelector{api.WildcardEndpointSelector},
+				},
 				ToPorts: []api.PortRule{{
 					Ports: []api.PortProtocol{
 						{Port: "80", Protocol: api.ProtoTCP},
@@ -323,7 +337,9 @@ func (ds *PolicyTestSuite) TestMergeAllowAllL3AndShadowedL7(c *C) {
 				}},
 			},
 			{
-				FromEndpoints: []api.EndpointSelector{api.WildcardEndpointSelector},
+				IngressCommonRule: api.IngressCommonRule{
+					FromEndpoints: []api.EndpointSelector{api.WildcardEndpointSelector},
+				},
 				ToPorts: []api.PortRule{{
 					Ports: []api.PortProtocol{
 						{Port: "80", Protocol: api.ProtoTCP},
@@ -364,7 +380,9 @@ func (ds *PolicyTestSuite) TestMergeIdenticalAllowAllL3AndRestrictedL7HTTP(c *C)
 			EndpointSelector: endpointSelectorA,
 			Ingress: []api.IngressRule{
 				{
-					FromEndpoints: []api.EndpointSelector{api.WildcardEndpointSelector},
+					IngressCommonRule: api.IngressCommonRule{
+						FromEndpoints: []api.EndpointSelector{api.WildcardEndpointSelector},
+					},
 					ToPorts: []api.PortRule{{
 						Ports: []api.PortProtocol{
 							{Port: "80", Protocol: api.ProtoTCP},
@@ -377,7 +395,9 @@ func (ds *PolicyTestSuite) TestMergeIdenticalAllowAllL3AndRestrictedL7HTTP(c *C)
 					}},
 				},
 				{
-					FromEndpoints: []api.EndpointSelector{api.WildcardEndpointSelector},
+					IngressCommonRule: api.IngressCommonRule{
+						FromEndpoints: []api.EndpointSelector{api.WildcardEndpointSelector},
+					},
 					ToPorts: []api.PortRule{{
 						Ports: []api.PortProtocol{
 							{Port: "80", Protocol: api.ProtoTCP},
@@ -444,7 +464,9 @@ func (ds *PolicyTestSuite) TestMergeIdenticalAllowAllL3AndRestrictedL7Kafka(c *C
 			EndpointSelector: endpointSelectorA,
 			Ingress: []api.IngressRule{
 				{
-					FromEndpoints: api.EndpointSelectorSlice{api.WildcardEndpointSelector},
+					IngressCommonRule: api.IngressCommonRule{
+						FromEndpoints: api.EndpointSelectorSlice{api.WildcardEndpointSelector},
+					},
 					ToPorts: []api.PortRule{{
 						Ports: []api.PortProtocol{
 							{Port: "9092", Protocol: api.ProtoTCP},
@@ -457,7 +479,9 @@ func (ds *PolicyTestSuite) TestMergeIdenticalAllowAllL3AndRestrictedL7Kafka(c *C
 					}},
 				},
 				{
-					FromEndpoints: api.EndpointSelectorSlice{api.WildcardEndpointSelector},
+					IngressCommonRule: api.IngressCommonRule{
+						FromEndpoints: api.EndpointSelectorSlice{api.WildcardEndpointSelector},
+					},
 					ToPorts: []api.PortRule{{
 						Ports: []api.PortProtocol{
 							{Port: "9092", Protocol: api.ProtoTCP},
@@ -525,7 +549,9 @@ func (ds *PolicyTestSuite) TestMergeIdenticalAllowAllL3AndMismatchingParsers(c *
 			EndpointSelector: endpointSelectorA,
 			Ingress: []api.IngressRule{
 				{
-					FromEndpoints: api.EndpointSelectorSlice{api.WildcardEndpointSelector},
+					IngressCommonRule: api.IngressCommonRule{
+						FromEndpoints: api.EndpointSelectorSlice{api.WildcardEndpointSelector},
+					},
 					ToPorts: []api.PortRule{{
 						Ports: []api.PortProtocol{
 							{Port: "80", Protocol: api.ProtoTCP},
@@ -538,7 +564,9 @@ func (ds *PolicyTestSuite) TestMergeIdenticalAllowAllL3AndMismatchingParsers(c *
 					}},
 				},
 				{
-					FromEndpoints: []api.EndpointSelector{api.WildcardEndpointSelector},
+					IngressCommonRule: api.IngressCommonRule{
+						FromEndpoints: []api.EndpointSelector{api.WildcardEndpointSelector},
+					},
 					ToPorts: []api.PortRule{{
 						Ports: []api.PortProtocol{
 							{Port: "80", Protocol: api.ProtoTCP},
@@ -570,7 +598,9 @@ func (ds *PolicyTestSuite) TestMergeIdenticalAllowAllL3AndMismatchingParsers(c *
 			EndpointSelector: endpointSelectorA,
 			Ingress: []api.IngressRule{
 				{
-					FromEndpoints: []api.EndpointSelector{api.WildcardEndpointSelector},
+					IngressCommonRule: api.IngressCommonRule{
+						FromEndpoints: []api.EndpointSelector{api.WildcardEndpointSelector},
+					},
 					ToPorts: []api.PortRule{{
 						Ports: []api.PortProtocol{
 							{Port: "80", Protocol: api.ProtoTCP},
@@ -583,7 +613,9 @@ func (ds *PolicyTestSuite) TestMergeIdenticalAllowAllL3AndMismatchingParsers(c *
 					}},
 				},
 				{
-					FromEndpoints: api.EndpointSelectorSlice{api.WildcardEndpointSelector},
+					IngressCommonRule: api.IngressCommonRule{
+						FromEndpoints: api.EndpointSelectorSlice{api.WildcardEndpointSelector},
+					},
 					ToPorts: []api.PortRule{{
 						Ports: []api.PortProtocol{
 							{Port: "80", Protocol: api.ProtoTCP},
@@ -615,7 +647,9 @@ func (ds *PolicyTestSuite) TestMergeIdenticalAllowAllL3AndMismatchingParsers(c *
 			EndpointSelector: endpointSelectorA,
 			Ingress: []api.IngressRule{
 				{
-					FromEndpoints: []api.EndpointSelector{api.WildcardEndpointSelector},
+					IngressCommonRule: api.IngressCommonRule{
+						FromEndpoints: []api.EndpointSelector{api.WildcardEndpointSelector},
+					},
 					ToPorts: []api.PortRule{{
 						Ports: []api.PortProtocol{
 							{Port: "80", Protocol: api.ProtoTCP},
@@ -628,7 +662,9 @@ func (ds *PolicyTestSuite) TestMergeIdenticalAllowAllL3AndMismatchingParsers(c *
 					}},
 				},
 				{
-					FromEndpoints: api.EndpointSelectorSlice{api.WildcardEndpointSelector},
+					IngressCommonRule: api.IngressCommonRule{
+						FromEndpoints: api.EndpointSelectorSlice{api.WildcardEndpointSelector},
+					},
 					ToPorts: []api.PortRule{{
 						Ports: []api.PortProtocol{
 							{Port: "80", Protocol: api.ProtoTCP},
@@ -664,7 +700,9 @@ func (ds *PolicyTestSuite) TestMergeIdenticalAllowAllL3AndMismatchingParsers(c *
 			EndpointSelector: endpointSelectorA,
 			Egress: []api.EgressRule{
 				{
-					ToEndpoints: []api.EndpointSelector{endpointSelectorC},
+					EgressCommonRule: api.EgressCommonRule{
+						ToEndpoints: []api.EndpointSelector{endpointSelectorC},
+					},
 					ToPorts: []api.PortRule{{
 						Ports: []api.PortProtocol{
 							{Port: "80", Protocol: api.ProtoTCP},
@@ -675,7 +713,9 @@ func (ds *PolicyTestSuite) TestMergeIdenticalAllowAllL3AndMismatchingParsers(c *
 					}},
 				},
 				{
-					ToEndpoints: []api.EndpointSelector{endpointSelectorC},
+					EgressCommonRule: api.EgressCommonRule{
+						ToEndpoints: []api.EndpointSelector{endpointSelectorC},
+					},
 					ToPorts: []api.PortRule{{
 						Ports: []api.PortProtocol{
 							{Port: "80", Protocol: api.ProtoTCP},
@@ -713,7 +753,9 @@ func (ds *PolicyTestSuite) TestMergeTLSPolicies(c *C) {
 			EndpointSelector: fooSelector,
 			Egress: []api.EgressRule{
 				{
-					ToEndpoints: []api.EndpointSelector{endpointSelectorA},
+					EgressCommonRule: api.EgressCommonRule{
+						ToEndpoints: []api.EndpointSelector{endpointSelectorA},
+					},
 					ToPorts: []api.PortRule{{
 						Ports: []api.PortProtocol{
 							{Port: "443", Protocol: api.ProtoTCP},
@@ -721,7 +763,9 @@ func (ds *PolicyTestSuite) TestMergeTLSPolicies(c *C) {
 					}},
 				},
 				{
-					ToEndpoints: []api.EndpointSelector{endpointSelectorC},
+					EgressCommonRule: api.EgressCommonRule{
+						ToEndpoints: []api.EndpointSelector{endpointSelectorC},
+					},
 					ToPorts: []api.PortRule{{
 						Ports: []api.PortProtocol{
 							{Port: "443", Protocol: api.ProtoTCP},
@@ -806,7 +850,9 @@ func (ds *PolicyTestSuite) TestL3RuleShadowedByL3AllowAll(c *C) {
 			EndpointSelector: endpointSelectorA,
 			Ingress: []api.IngressRule{
 				{
-					FromEndpoints: []api.EndpointSelector{endpointSelectorA},
+					IngressCommonRule: api.IngressCommonRule{
+						FromEndpoints: []api.EndpointSelector{endpointSelectorA},
+					},
 					ToPorts: []api.PortRule{{
 						Ports: []api.PortProtocol{
 							{Port: "80", Protocol: api.ProtoTCP},
@@ -814,7 +860,9 @@ func (ds *PolicyTestSuite) TestL3RuleShadowedByL3AllowAll(c *C) {
 					}},
 				},
 				{
-					FromEndpoints: []api.EndpointSelector{api.WildcardEndpointSelector},
+					IngressCommonRule: api.IngressCommonRule{
+						FromEndpoints: []api.EndpointSelector{api.WildcardEndpointSelector},
+					},
 					ToPorts: []api.PortRule{{
 						Ports: []api.PortProtocol{
 							{Port: "80", Protocol: api.ProtoTCP},
@@ -870,7 +918,9 @@ func (ds *PolicyTestSuite) TestL3RuleShadowedByL3AllowAll(c *C) {
 			EndpointSelector: endpointSelectorA,
 			Ingress: []api.IngressRule{
 				{
-					FromEndpoints: []api.EndpointSelector{api.WildcardEndpointSelector},
+					IngressCommonRule: api.IngressCommonRule{
+						FromEndpoints: []api.EndpointSelector{api.WildcardEndpointSelector},
+					},
 					ToPorts: []api.PortRule{{
 						Ports: []api.PortProtocol{
 							{Port: "80", Protocol: api.ProtoTCP},
@@ -878,7 +928,9 @@ func (ds *PolicyTestSuite) TestL3RuleShadowedByL3AllowAll(c *C) {
 					}},
 				},
 				{
-					FromEndpoints: []api.EndpointSelector{endpointSelectorA},
+					IngressCommonRule: api.IngressCommonRule{
+						FromEndpoints: []api.EndpointSelector{endpointSelectorA},
+					},
 					ToPorts: []api.PortRule{{
 						Ports: []api.PortProtocol{
 							{Port: "80", Protocol: api.ProtoTCP},
@@ -942,7 +994,9 @@ func (ds *PolicyTestSuite) TestL3RuleWithL7RulePartiallyShadowedByL3AllowAll(c *
 			EndpointSelector: endpointSelectorA,
 			Ingress: []api.IngressRule{
 				{
-					FromEndpoints: []api.EndpointSelector{endpointSelectorA},
+					IngressCommonRule: api.IngressCommonRule{
+						FromEndpoints: []api.EndpointSelector{endpointSelectorA},
+					},
 					ToPorts: []api.PortRule{{
 						Ports: []api.PortProtocol{
 							{Port: "80", Protocol: api.ProtoTCP},
@@ -955,7 +1009,9 @@ func (ds *PolicyTestSuite) TestL3RuleWithL7RulePartiallyShadowedByL3AllowAll(c *
 					}},
 				},
 				{
-					FromEndpoints: []api.EndpointSelector{api.WildcardEndpointSelector},
+					IngressCommonRule: api.IngressCommonRule{
+						FromEndpoints: []api.EndpointSelector{api.WildcardEndpointSelector},
+					},
 					ToPorts: []api.PortRule{{
 						Ports: []api.PortProtocol{
 							{Port: "80", Protocol: api.ProtoTCP},
@@ -1017,7 +1073,9 @@ func (ds *PolicyTestSuite) TestL3RuleWithL7RulePartiallyShadowedByL3AllowAll(c *
 			EndpointSelector: endpointSelectorA,
 			Ingress: []api.IngressRule{
 				{
-					FromEndpoints: []api.EndpointSelector{api.WildcardEndpointSelector},
+					IngressCommonRule: api.IngressCommonRule{
+						FromEndpoints: []api.EndpointSelector{api.WildcardEndpointSelector},
+					},
 					ToPorts: []api.PortRule{{
 						Ports: []api.PortProtocol{
 							{Port: "80", Protocol: api.ProtoTCP},
@@ -1025,7 +1083,9 @@ func (ds *PolicyTestSuite) TestL3RuleWithL7RulePartiallyShadowedByL3AllowAll(c *
 					}},
 				},
 				{
-					FromEndpoints: []api.EndpointSelector{endpointSelectorA},
+					IngressCommonRule: api.IngressCommonRule{
+						FromEndpoints: []api.EndpointSelector{endpointSelectorA},
+					},
 					ToPorts: []api.PortRule{{
 						Ports: []api.PortProtocol{
 							{Port: "80", Protocol: api.ProtoTCP},
@@ -1100,7 +1160,9 @@ func (ds *PolicyTestSuite) TestL3RuleWithL7RuleShadowedByL3AllowAll(c *C) {
 			EndpointSelector: endpointSelectorA,
 			Ingress: []api.IngressRule{
 				{
-					FromEndpoints: []api.EndpointSelector{endpointSelectorA},
+					IngressCommonRule: api.IngressCommonRule{
+						FromEndpoints: []api.EndpointSelector{endpointSelectorA},
+					},
 					ToPorts: []api.PortRule{{
 						Ports: []api.PortProtocol{
 							{Port: "80", Protocol: api.ProtoTCP},
@@ -1113,7 +1175,9 @@ func (ds *PolicyTestSuite) TestL3RuleWithL7RuleShadowedByL3AllowAll(c *C) {
 					}},
 				},
 				{
-					FromEndpoints: []api.EndpointSelector{api.WildcardEndpointSelector},
+					IngressCommonRule: api.IngressCommonRule{
+						FromEndpoints: []api.EndpointSelector{api.WildcardEndpointSelector},
+					},
 					ToPorts: []api.PortRule{{
 						Ports: []api.PortProtocol{
 							{Port: "80", Protocol: api.ProtoTCP},
@@ -1185,7 +1249,9 @@ func (ds *PolicyTestSuite) TestL3RuleWithL7RuleShadowedByL3AllowAll(c *C) {
 			EndpointSelector: endpointSelectorA,
 			Ingress: []api.IngressRule{
 				{
-					FromEndpoints: []api.EndpointSelector{api.WildcardEndpointSelector},
+					IngressCommonRule: api.IngressCommonRule{
+						FromEndpoints: []api.EndpointSelector{api.WildcardEndpointSelector},
+					},
 					ToPorts: []api.PortRule{{
 						Ports: []api.PortProtocol{
 							{Port: "80", Protocol: api.ProtoTCP},
@@ -1198,7 +1264,9 @@ func (ds *PolicyTestSuite) TestL3RuleWithL7RuleShadowedByL3AllowAll(c *C) {
 					}},
 				},
 				{
-					FromEndpoints: []api.EndpointSelector{endpointSelectorA},
+					IngressCommonRule: api.IngressCommonRule{
+						FromEndpoints: []api.EndpointSelector{endpointSelectorA},
+					},
 					ToPorts: []api.PortRule{{
 						Ports: []api.PortProtocol{
 							{Port: "80", Protocol: api.ProtoTCP},
@@ -1273,7 +1341,9 @@ func (ds *PolicyTestSuite) TestL3SelectingEndpointAndL3AllowAllMergeConflictingL
 			EndpointSelector: endpointSelectorA,
 			Ingress: []api.IngressRule{
 				{
-					FromEndpoints: []api.EndpointSelector{endpointSelectorA},
+					IngressCommonRule: api.IngressCommonRule{
+						FromEndpoints: []api.EndpointSelector{endpointSelectorA},
+					},
 					ToPorts: []api.PortRule{{
 						Ports: []api.PortProtocol{
 							{Port: "80", Protocol: api.ProtoTCP},
@@ -1286,7 +1356,9 @@ func (ds *PolicyTestSuite) TestL3SelectingEndpointAndL3AllowAllMergeConflictingL
 					}},
 				},
 				{
-					FromEndpoints: []api.EndpointSelector{api.WildcardEndpointSelector},
+					IngressCommonRule: api.IngressCommonRule{
+						FromEndpoints: []api.EndpointSelector{api.WildcardEndpointSelector},
+					},
 					ToPorts: []api.PortRule{{
 						Ports: []api.PortProtocol{
 							{Port: "80", Protocol: api.ProtoTCP},
@@ -1326,7 +1398,9 @@ func (ds *PolicyTestSuite) TestL3SelectingEndpointAndL3AllowAllMergeConflictingL
 			EndpointSelector: endpointSelectorA,
 			Ingress: []api.IngressRule{
 				{
-					FromEndpoints: []api.EndpointSelector{api.WildcardEndpointSelector},
+					IngressCommonRule: api.IngressCommonRule{
+						FromEndpoints: []api.EndpointSelector{api.WildcardEndpointSelector},
+					},
 					ToPorts: []api.PortRule{{
 						Ports: []api.PortProtocol{
 							{Port: "80", Protocol: api.ProtoTCP},
@@ -1339,7 +1413,9 @@ func (ds *PolicyTestSuite) TestL3SelectingEndpointAndL3AllowAllMergeConflictingL
 					}},
 				},
 				{
-					FromEndpoints: []api.EndpointSelector{endpointSelectorA},
+					IngressCommonRule: api.IngressCommonRule{
+						FromEndpoints: []api.EndpointSelector{endpointSelectorA},
+					},
 					ToPorts: []api.PortRule{{
 						Ports: []api.PortProtocol{
 							{Port: "80", Protocol: api.ProtoTCP},
@@ -1383,7 +1459,9 @@ func (ds *PolicyTestSuite) TestMergingWithDifferentEndpointsSelectedAllowSameL7(
 			EndpointSelector: endpointSelectorA,
 			Ingress: []api.IngressRule{
 				{
-					FromEndpoints: []api.EndpointSelector{endpointSelectorA},
+					IngressCommonRule: api.IngressCommonRule{
+						FromEndpoints: []api.EndpointSelector{endpointSelectorA},
+					},
 					ToPorts: []api.PortRule{{
 						Ports: []api.PortProtocol{
 							{Port: "80", Protocol: api.ProtoTCP},
@@ -1396,7 +1474,9 @@ func (ds *PolicyTestSuite) TestMergingWithDifferentEndpointsSelectedAllowSameL7(
 					}},
 				},
 				{
-					FromEndpoints: []api.EndpointSelector{endpointSelectorC},
+					IngressCommonRule: api.IngressCommonRule{
+						FromEndpoints: []api.EndpointSelector{endpointSelectorC},
+					},
 					ToPorts: []api.PortRule{{
 						Ports: []api.PortProtocol{
 							{Port: "80", Protocol: api.ProtoTCP},
@@ -1473,7 +1553,9 @@ func (ds *PolicyTestSuite) TestMergingWithDifferentEndpointSelectedAllowAllL7(c 
 			EndpointSelector: endpointSelectorA,
 			Ingress: []api.IngressRule{
 				{
-					FromEndpoints: []api.EndpointSelector{endpointSelectorA},
+					IngressCommonRule: api.IngressCommonRule{
+						FromEndpoints: []api.EndpointSelector{endpointSelectorA},
+					},
 					ToPorts: []api.PortRule{{
 						Ports: []api.PortProtocol{
 							{Port: "80", Protocol: api.ProtoTCP},
@@ -1481,7 +1563,9 @@ func (ds *PolicyTestSuite) TestMergingWithDifferentEndpointSelectedAllowAllL7(c 
 					}},
 				},
 				{
-					FromEndpoints: []api.EndpointSelector{endpointSelectorC},
+					IngressCommonRule: api.IngressCommonRule{
+						FromEndpoints: []api.EndpointSelector{endpointSelectorC},
+					},
 					ToPorts: []api.PortRule{{
 						Ports: []api.PortProtocol{
 							{Port: "80", Protocol: api.ProtoTCP},
@@ -1556,7 +1640,9 @@ func (ds *PolicyTestSuite) TestAllowingLocalhostShadowsL7(c *C) {
 			EndpointSelector: endpointSelectorA,
 			Ingress: []api.IngressRule{
 				{
-					FromEndpoints: []api.EndpointSelector{api.WildcardEndpointSelector},
+					IngressCommonRule: api.IngressCommonRule{
+						FromEndpoints: []api.EndpointSelector{api.WildcardEndpointSelector},
+					},
 					ToPorts: []api.PortRule{{
 						Ports: []api.PortProtocol{
 							{Port: "80", Protocol: api.ProtoTCP},
@@ -1629,7 +1715,9 @@ func (ds *PolicyTestSuite) TestEntitiesL3(c *C) {
 			EndpointSelector: endpointSelectorA,
 			Egress: []api.EgressRule{
 				{
-					ToEntities: api.EntitySlice{api.EntityAll},
+					EgressCommonRule: api.EgressCommonRule{
+						ToEntities: api.EntitySlice{api.EntityAll},
+					},
 				},
 			},
 		}}

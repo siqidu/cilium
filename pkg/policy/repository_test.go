@@ -61,8 +61,10 @@ func (ds *PolicyTestSuite) TestComputePolicyEnforcementAndRules(c *C) {
 		EndpointSelector: api.NewESFromLabels(fooSelectLabel),
 		Ingress: []api.IngressRule{
 			{
-				FromEndpoints: []api.EndpointSelector{
-					api.NewESFromLabels(fooSelectLabel),
+				IngressCommonRule: api.IngressCommonRule{
+					FromEndpoints: []api.EndpointSelector{
+						api.NewESFromLabels(fooSelectLabel),
+					},
 				},
 			},
 		},
@@ -75,8 +77,10 @@ func (ds *PolicyTestSuite) TestComputePolicyEnforcementAndRules(c *C) {
 		EndpointSelector: api.NewESFromLabels(fooSelectLabel),
 		Ingress: []api.IngressRule{
 			{
-				FromEndpoints: []api.EndpointSelector{
-					api.NewESFromLabels(fooSelectLabel),
+				IngressCommonRule: api.IngressCommonRule{
+					FromEndpoints: []api.EndpointSelector{
+						api.NewESFromLabels(fooSelectLabel),
+					},
 				},
 			},
 		},
@@ -89,8 +93,10 @@ func (ds *PolicyTestSuite) TestComputePolicyEnforcementAndRules(c *C) {
 		EndpointSelector: api.NewESFromLabels(fooSelectLabel),
 		Egress: []api.EgressRule{
 			{
-				ToEndpoints: []api.EndpointSelector{
-					api.NewESFromLabels(fooSelectLabel),
+				EgressCommonRule: api.EgressCommonRule{
+					ToEndpoints: []api.EndpointSelector{
+						api.NewESFromLabels(fooSelectLabel),
+					},
 				},
 			},
 		},
@@ -103,8 +109,10 @@ func (ds *PolicyTestSuite) TestComputePolicyEnforcementAndRules(c *C) {
 		EndpointSelector: api.NewESFromLabels(fooSelectLabel),
 		Egress: []api.EgressRule{
 			{
-				ToEndpoints: []api.EndpointSelector{
-					api.NewESFromLabels(fooSelectLabel),
+				EgressCommonRule: api.EgressCommonRule{
+					ToEndpoints: []api.EndpointSelector{
+						api.NewESFromLabels(fooSelectLabel),
+					},
 				},
 			},
 		},
@@ -117,15 +125,19 @@ func (ds *PolicyTestSuite) TestComputePolicyEnforcementAndRules(c *C) {
 		EndpointSelector: api.NewESFromLabels(fooSelectLabel),
 		Ingress: []api.IngressRule{
 			{
-				FromEndpoints: []api.EndpointSelector{
-					api.NewESFromLabels(fooSelectLabel),
+				IngressCommonRule: api.IngressCommonRule{
+					FromEndpoints: []api.EndpointSelector{
+						api.NewESFromLabels(fooSelectLabel),
+					},
 				},
 			},
 		},
 		Egress: []api.EgressRule{
 			{
-				ToEndpoints: []api.EndpointSelector{
-					api.NewESFromLabels(fooSelectLabel),
+				EgressCommonRule: api.EgressCommonRule{
+					ToEndpoints: []api.EndpointSelector{
+						api.NewESFromLabels(fooSelectLabel),
+					},
 				},
 			},
 		},
@@ -381,8 +393,10 @@ func (ds *PolicyTestSuite) TestAllowsIngress(c *C) {
 		EndpointSelector: api.NewESFromLabels(labels.ParseSelectLabel("bar")),
 		Ingress: []api.IngressRule{
 			{
-				FromEndpoints: []api.EndpointSelector{
-					api.NewESFromLabels(labels.ParseSelectLabel("foo")),
+				IngressCommonRule: api.IngressCommonRule{
+					FromEndpoints: []api.EndpointSelector{
+						api.NewESFromLabels(labels.ParseSelectLabel("foo")),
+					},
 				},
 			},
 		},
@@ -395,8 +409,10 @@ func (ds *PolicyTestSuite) TestAllowsIngress(c *C) {
 		EndpointSelector: api.NewESFromLabels(labels.ParseSelectLabel("groupA")),
 		Ingress: []api.IngressRule{
 			{
-				FromRequires: []api.EndpointSelector{
-					api.NewESFromLabels(labels.ParseSelectLabel("groupA")),
+				IngressCommonRule: api.IngressCommonRule{
+					FromRequires: []api.EndpointSelector{
+						api.NewESFromLabels(labels.ParseSelectLabel("groupA")),
+					},
 				},
 			},
 		},
@@ -406,8 +422,10 @@ func (ds *PolicyTestSuite) TestAllowsIngress(c *C) {
 		EndpointSelector: api.NewESFromLabels(labels.ParseSelectLabel("bar2")),
 		Ingress: []api.IngressRule{
 			{
-				FromEndpoints: []api.EndpointSelector{
-					api.NewESFromLabels(labels.ParseSelectLabel("foo")),
+				IngressCommonRule: api.IngressCommonRule{
+					FromEndpoints: []api.EndpointSelector{
+						api.NewESFromLabels(labels.ParseSelectLabel("foo")),
+					},
 				},
 			},
 		},
@@ -474,8 +492,10 @@ func (ds *PolicyTestSuite) TestAllowsEgress(c *C) {
 		EndpointSelector: api.NewESFromLabels(labels.ParseSelectLabel("foo")),
 		Egress: []api.EgressRule{
 			{
-				ToEndpoints: []api.EndpointSelector{
-					api.NewESFromLabels(labels.ParseSelectLabel("bar")),
+				EgressCommonRule: api.EgressCommonRule{
+					ToEndpoints: []api.EndpointSelector{
+						api.NewESFromLabels(labels.ParseSelectLabel("bar")),
+					},
 				},
 			},
 		},
@@ -488,8 +508,10 @@ func (ds *PolicyTestSuite) TestAllowsEgress(c *C) {
 		EndpointSelector: api.NewESFromLabels(labels.ParseSelectLabel("groupA")),
 		Egress: []api.EgressRule{
 			{
-				ToRequires: []api.EndpointSelector{
-					api.NewESFromLabels(labels.ParseSelectLabel("groupA")),
+				EgressCommonRule: api.EgressCommonRule{
+					ToRequires: []api.EndpointSelector{
+						api.NewESFromLabels(labels.ParseSelectLabel("groupA")),
+					},
 				},
 			},
 		},
@@ -499,8 +521,10 @@ func (ds *PolicyTestSuite) TestAllowsEgress(c *C) {
 		EndpointSelector: api.NewESFromLabels(labels.ParseSelectLabel("foo")),
 		Egress: []api.EgressRule{
 			{
-				ToEndpoints: []api.EndpointSelector{
-					api.NewESFromLabels(labels.ParseSelectLabel("bar2")),
+				EgressCommonRule: api.EgressCommonRule{
+					ToEndpoints: []api.EndpointSelector{
+						api.NewESFromLabels(labels.ParseSelectLabel("bar2")),
+					},
 				},
 			},
 		},
@@ -570,7 +594,9 @@ func (ds *PolicyTestSuite) TestWildcardL3RulesIngress(c *C) {
 		EndpointSelector: selFoo,
 		Ingress: []api.IngressRule{
 			{
-				FromEndpoints: []api.EndpointSelector{selBar1},
+				IngressCommonRule: api.IngressCommonRule{
+					FromEndpoints: []api.EndpointSelector{selBar1},
+				},
 			},
 		},
 		Labels: labelsL3,
@@ -583,7 +609,9 @@ func (ds *PolicyTestSuite) TestWildcardL3RulesIngress(c *C) {
 		EndpointSelector: selFoo,
 		Ingress: []api.IngressRule{
 			{
-				FromEndpoints: []api.EndpointSelector{selBar2},
+				IngressCommonRule: api.IngressCommonRule{
+					FromEndpoints: []api.EndpointSelector{selBar2},
+				},
 				ToPorts: []api.PortRule{{
 					Ports: []api.PortProtocol{
 						{Port: "9092", Protocol: api.ProtoTCP},
@@ -606,7 +634,9 @@ func (ds *PolicyTestSuite) TestWildcardL3RulesIngress(c *C) {
 		EndpointSelector: selFoo,
 		Ingress: []api.IngressRule{
 			{
-				FromEndpoints: []api.EndpointSelector{selBar2},
+				IngressCommonRule: api.IngressCommonRule{
+					FromEndpoints: []api.EndpointSelector{selBar2},
+				},
 				ToPorts: []api.PortRule{{
 					Ports: []api.PortProtocol{
 						{Port: "80", Protocol: api.ProtoTCP},
@@ -628,7 +658,9 @@ func (ds *PolicyTestSuite) TestWildcardL3RulesIngress(c *C) {
 		EndpointSelector: selFoo,
 		Ingress: []api.IngressRule{
 			{
-				FromEndpoints: []api.EndpointSelector{selBar2},
+				IngressCommonRule: api.IngressCommonRule{
+					FromEndpoints: []api.EndpointSelector{selBar2},
+				},
 				ToPorts: []api.PortRule{{
 					Ports: []api.PortProtocol{
 						{Port: "9090", Protocol: api.ProtoTCP},
@@ -736,7 +768,9 @@ func (ds *PolicyTestSuite) TestWildcardL4RulesIngress(c *C) {
 		EndpointSelector: selFoo,
 		Ingress: []api.IngressRule{
 			{
-				FromEndpoints: []api.EndpointSelector{selBar1},
+				IngressCommonRule: api.IngressCommonRule{
+					FromEndpoints: []api.EndpointSelector{selBar1},
+				},
 				ToPorts: []api.PortRule{{
 					Ports: []api.PortProtocol{
 						{Port: "9092", Protocol: api.ProtoTCP},
@@ -754,7 +788,9 @@ func (ds *PolicyTestSuite) TestWildcardL4RulesIngress(c *C) {
 		EndpointSelector: selFoo,
 		Ingress: []api.IngressRule{
 			{
-				FromEndpoints: []api.EndpointSelector{selBar2},
+				IngressCommonRule: api.IngressCommonRule{
+					FromEndpoints: []api.EndpointSelector{selBar2},
+				},
 				ToPorts: []api.PortRule{{
 					Ports: []api.PortProtocol{
 						{Port: "9092", Protocol: api.ProtoTCP},
@@ -777,7 +813,9 @@ func (ds *PolicyTestSuite) TestWildcardL4RulesIngress(c *C) {
 		EndpointSelector: selFoo,
 		Ingress: []api.IngressRule{
 			{
-				FromEndpoints: []api.EndpointSelector{selBar1},
+				IngressCommonRule: api.IngressCommonRule{
+					FromEndpoints: []api.EndpointSelector{selBar1},
+				},
 				ToPorts: []api.PortRule{{
 					Ports: []api.PortProtocol{
 						{Port: "80", Protocol: api.ProtoTCP},
@@ -795,7 +833,9 @@ func (ds *PolicyTestSuite) TestWildcardL4RulesIngress(c *C) {
 		EndpointSelector: selFoo,
 		Ingress: []api.IngressRule{
 			{
-				FromEndpoints: []api.EndpointSelector{selBar2},
+				IngressCommonRule: api.IngressCommonRule{
+					FromEndpoints: []api.EndpointSelector{selBar2},
+				},
 				ToPorts: []api.PortRule{{
 					Ports: []api.PortProtocol{
 						{Port: "80", Protocol: api.ProtoTCP},
@@ -875,8 +915,10 @@ func (ds *PolicyTestSuite) TestL3DependentL4IngressFromRequires(c *C) {
 		EndpointSelector: selFoo,
 		Ingress: []api.IngressRule{
 			{
-				FromEndpoints: []api.EndpointSelector{
-					selBar1,
+				IngressCommonRule: api.IngressCommonRule{
+					FromEndpoints: []api.EndpointSelector{
+						selBar1,
+					},
 				},
 				ToPorts: []api.PortRule{{
 					Ports: []api.PortProtocol{
@@ -885,7 +927,9 @@ func (ds *PolicyTestSuite) TestL3DependentL4IngressFromRequires(c *C) {
 				}},
 			},
 			{
-				FromRequires: []api.EndpointSelector{selBar2},
+				IngressCommonRule: api.IngressCommonRule{
+					FromRequires: []api.EndpointSelector{selBar2},
+				},
 			},
 		},
 	}
@@ -942,8 +986,10 @@ func (ds *PolicyTestSuite) TestL3DependentL4EgressFromRequires(c *C) {
 		EndpointSelector: selFoo,
 		Egress: []api.EgressRule{
 			{
-				ToEndpoints: []api.EndpointSelector{
-					selBar1,
+				EgressCommonRule: api.EgressCommonRule{
+					ToEndpoints: []api.EndpointSelector{
+						selBar1,
+					},
 				},
 				ToPorts: []api.PortRule{{
 					Ports: []api.PortProtocol{
@@ -952,10 +998,12 @@ func (ds *PolicyTestSuite) TestL3DependentL4EgressFromRequires(c *C) {
 				}},
 			},
 			{
-				ToEndpoints: []api.EndpointSelector{
-					api.WildcardEndpointSelector,
+				EgressCommonRule: api.EgressCommonRule{
+					ToEndpoints: []api.EndpointSelector{
+						api.WildcardEndpointSelector,
+					},
+					ToRequires: []api.EndpointSelector{selBar2},
 				},
-				ToRequires: []api.EndpointSelector{selBar2},
 			},
 		},
 	}
@@ -1035,7 +1083,9 @@ func (ds *PolicyTestSuite) TestWildcardL3RulesEgress(c *C) {
 		EndpointSelector: selFoo,
 		Egress: []api.EgressRule{
 			{
-				ToEndpoints: []api.EndpointSelector{selBar1},
+				EgressCommonRule: api.EgressCommonRule{
+					ToEndpoints: []api.EndpointSelector{selBar1},
+				},
 			},
 		},
 		Labels: labelsL4,
@@ -1048,7 +1098,9 @@ func (ds *PolicyTestSuite) TestWildcardL3RulesEgress(c *C) {
 		EndpointSelector: selFoo,
 		Egress: []api.EgressRule{
 			{
-				ToEndpoints: []api.EndpointSelector{selBar2},
+				EgressCommonRule: api.EgressCommonRule{
+					ToEndpoints: []api.EndpointSelector{selBar2},
+				},
 				ToPorts: []api.PortRule{{
 					Ports: []api.PortProtocol{
 						{Port: "53", Protocol: api.ProtoUDP},
@@ -1071,7 +1123,9 @@ func (ds *PolicyTestSuite) TestWildcardL3RulesEgress(c *C) {
 		EndpointSelector: selFoo,
 		Egress: []api.EgressRule{
 			{
-				ToEndpoints: []api.EndpointSelector{selBar2},
+				EgressCommonRule: api.EgressCommonRule{
+					ToEndpoints: []api.EndpointSelector{selBar2},
+				},
 				ToPorts: []api.PortRule{{
 					Ports: []api.PortProtocol{
 						{Port: "80", Protocol: api.ProtoTCP},
@@ -1172,7 +1226,9 @@ func (ds *PolicyTestSuite) TestWildcardL4RulesEgress(c *C) {
 		EndpointSelector: selFoo,
 		Egress: []api.EgressRule{
 			{
-				ToEndpoints: []api.EndpointSelector{selBar1},
+				EgressCommonRule: api.EgressCommonRule{
+					ToEndpoints: []api.EndpointSelector{selBar1},
+				},
 				ToPorts: []api.PortRule{{
 					Ports: []api.PortProtocol{
 						{Port: "53", Protocol: api.ProtoUDP},
@@ -1190,7 +1246,9 @@ func (ds *PolicyTestSuite) TestWildcardL4RulesEgress(c *C) {
 		EndpointSelector: selFoo,
 		Egress: []api.EgressRule{
 			{
-				ToEndpoints: []api.EndpointSelector{selBar2},
+				EgressCommonRule: api.EgressCommonRule{
+					ToEndpoints: []api.EndpointSelector{selBar2},
+				},
 				ToPorts: []api.PortRule{{
 					Ports: []api.PortProtocol{
 						{Port: "53", Protocol: api.ProtoUDP},
@@ -1213,7 +1271,9 @@ func (ds *PolicyTestSuite) TestWildcardL4RulesEgress(c *C) {
 		EndpointSelector: selFoo,
 		Egress: []api.EgressRule{
 			{
-				ToEndpoints: []api.EndpointSelector{selBar1},
+				EgressCommonRule: api.EgressCommonRule{
+					ToEndpoints: []api.EndpointSelector{selBar1},
+				},
 				ToPorts: []api.PortRule{{
 					Ports: []api.PortProtocol{
 						{Port: "80", Protocol: api.ProtoTCP},
@@ -1231,7 +1291,9 @@ func (ds *PolicyTestSuite) TestWildcardL4RulesEgress(c *C) {
 		EndpointSelector: selFoo,
 		Egress: []api.EgressRule{
 			{
-				ToEndpoints: []api.EndpointSelector{selBar2},
+				EgressCommonRule: api.EgressCommonRule{
+					ToEndpoints: []api.EndpointSelector{selBar2},
+				},
 				ToPorts: []api.PortRule{{
 					Ports: []api.PortProtocol{
 						{Port: "80", Protocol: api.ProtoTCP},
@@ -1326,7 +1388,9 @@ func (ds *PolicyTestSuite) TestWildcardCIDRRulesEgress(c *C) {
 		EndpointSelector: selFoo,
 		Egress: []api.EgressRule{
 			{
-				ToCIDR: api.CIDRSlice{"192.0.0.0/3"},
+				EgressCommonRule: api.EgressCommonRule{
+					ToCIDR: api.CIDRSlice{"192.0.0.0/3"},
+				},
 				ToPorts: []api.PortRule{{
 					Ports: []api.PortProtocol{
 						{
@@ -1356,7 +1420,9 @@ func (ds *PolicyTestSuite) TestWildcardCIDRRulesEgress(c *C) {
 		EndpointSelector: selFoo,
 		Egress: []api.EgressRule{
 			{
-				ToCIDR: api.CIDRSlice{"192.0.0.0/3"},
+				EgressCommonRule: api.EgressCommonRule{
+					ToCIDR: api.CIDRSlice{"192.0.0.0/3"},
+				},
 			},
 		},
 		Labels: labelsL3,
@@ -1434,7 +1500,9 @@ func (ds *PolicyTestSuite) TestWildcardL3RulesIngressFromEntities(c *C) {
 		EndpointSelector: selFoo,
 		Ingress: []api.IngressRule{
 			{
-				FromEntities: api.EntitySlice{api.EntityWorld},
+				IngressCommonRule: api.IngressCommonRule{
+					FromEntities: api.EntitySlice{api.EntityWorld},
+				},
 			},
 		},
 		Labels: labelsL3,
@@ -1447,7 +1515,9 @@ func (ds *PolicyTestSuite) TestWildcardL3RulesIngressFromEntities(c *C) {
 		EndpointSelector: selFoo,
 		Ingress: []api.IngressRule{
 			{
-				FromEndpoints: []api.EndpointSelector{selBar2},
+				IngressCommonRule: api.IngressCommonRule{
+					FromEndpoints: []api.EndpointSelector{selBar2},
+				},
 				ToPorts: []api.PortRule{{
 					Ports: []api.PortProtocol{
 						{Port: "9092", Protocol: api.ProtoTCP},
@@ -1470,7 +1540,9 @@ func (ds *PolicyTestSuite) TestWildcardL3RulesIngressFromEntities(c *C) {
 		EndpointSelector: selFoo,
 		Ingress: []api.IngressRule{
 			{
-				FromEndpoints: []api.EndpointSelector{selBar2},
+				IngressCommonRule: api.IngressCommonRule{
+					FromEndpoints: []api.EndpointSelector{selBar2},
+				},
 				ToPorts: []api.PortRule{{
 					Ports: []api.PortProtocol{
 						{Port: "80", Protocol: api.ProtoTCP},
@@ -1568,7 +1640,9 @@ func (ds *PolicyTestSuite) TestWildcardL3RulesEgressToEntities(c *C) {
 		EndpointSelector: selFoo,
 		Egress: []api.EgressRule{
 			{
-				ToEntities: api.EntitySlice{api.EntityWorld},
+				EgressCommonRule: api.EgressCommonRule{
+					ToEntities: api.EntitySlice{api.EntityWorld},
+				},
 			},
 		},
 		Labels: labelsL3,
@@ -1581,7 +1655,9 @@ func (ds *PolicyTestSuite) TestWildcardL3RulesEgressToEntities(c *C) {
 		EndpointSelector: selFoo,
 		Egress: []api.EgressRule{
 			{
-				ToEndpoints: []api.EndpointSelector{selBar2},
+				EgressCommonRule: api.EgressCommonRule{
+					ToEndpoints: []api.EndpointSelector{selBar2},
+				},
 				ToPorts: []api.PortRule{{
 					Ports: []api.PortProtocol{
 						{Port: "53", Protocol: api.ProtoUDP},
@@ -1604,7 +1680,9 @@ func (ds *PolicyTestSuite) TestWildcardL3RulesEgressToEntities(c *C) {
 		EndpointSelector: selFoo,
 		Egress: []api.EgressRule{
 			{
-				ToEndpoints: []api.EndpointSelector{selBar2},
+				EgressCommonRule: api.EgressCommonRule{
+					ToEndpoints: []api.EndpointSelector{selBar2},
+				},
 				ToPorts: []api.PortRule{{
 					Ports: []api.PortProtocol{
 						{Port: "80", Protocol: api.ProtoTCP},
@@ -1722,7 +1800,9 @@ func (ds *PolicyTestSuite) TestMinikubeGettingStarted(c *C) {
 		EndpointSelector: api.NewESFromLabels(labels.ParseSelectLabel("id=app1")),
 		Ingress: []api.IngressRule{
 			{
-				FromEndpoints: selectorFromApp2,
+				IngressCommonRule: api.IngressCommonRule{
+					FromEndpoints: selectorFromApp2,
+				},
 				ToPorts: []api.PortRule{{
 					Ports: []api.PortProtocol{
 						{Port: "80", Protocol: api.ProtoTCP},
@@ -1737,7 +1817,9 @@ func (ds *PolicyTestSuite) TestMinikubeGettingStarted(c *C) {
 		EndpointSelector: api.NewESFromLabels(labels.ParseSelectLabel("id=app1")),
 		Ingress: []api.IngressRule{
 			{
-				FromEndpoints: selectorFromApp2,
+				IngressCommonRule: api.IngressCommonRule{
+					FromEndpoints: selectorFromApp2,
+				},
 				ToPorts: []api.PortRule{{
 					Ports: []api.PortProtocol{
 						{Port: "80", Protocol: api.ProtoTCP},
@@ -1757,7 +1839,9 @@ func (ds *PolicyTestSuite) TestMinikubeGettingStarted(c *C) {
 		EndpointSelector: api.NewESFromLabels(labels.ParseSelectLabel("id=app1")),
 		Ingress: []api.IngressRule{
 			{
-				FromEndpoints: selectorFromApp2,
+				IngressCommonRule: api.IngressCommonRule{
+					FromEndpoints: selectorFromApp2,
+				},
 				ToPorts: []api.PortRule{{
 					Ports: []api.PortProtocol{
 						{Port: "80", Protocol: api.ProtoTCP},
@@ -1844,9 +1928,11 @@ func buildRule(from, to, port string) api.Rule {
 		EndpointSelector: toES,
 		Ingress: []api.IngressRule{
 			{
-				FromEndpoints: []api.EndpointSelector{
-					reservedES,
-					fromES,
+				IngressCommonRule: api.IngressCommonRule{
+					FromEndpoints: []api.EndpointSelector{
+						reservedES,
+						fromES,
+					},
 				},
 				ToPorts: ports,
 			},
@@ -1960,8 +2046,10 @@ Ingress verdict: denied
 	l3rule = api.Rule{
 		EndpointSelector: api.NewESFromLabels(labels.ParseSelectLabel("bar")),
 		Ingress: []api.IngressRule{{
-			FromRequires: []api.EndpointSelector{
-				api.NewESFromLabels(labels.ParseSelectLabel("baz")),
+			IngressCommonRule: api.IngressCommonRule{
+				FromRequires: []api.EndpointSelector{
+					api.NewESFromLabels(labels.ParseSelectLabel("baz")),
+				},
 			},
 		}},
 	}
@@ -2028,7 +2116,9 @@ func (ds *PolicyTestSuite) TestremoveIdentityFromRuleCaches(c *C) {
 		EndpointSelector: endpointSelectorA,
 		Ingress: []api.IngressRule{
 			{
-				FromEndpoints: []api.EndpointSelector{endpointSelectorC},
+				IngressCommonRule: api.IngressCommonRule{
+					FromEndpoints: []api.EndpointSelector{endpointSelectorC},
+				},
 			},
 		},
 	}})

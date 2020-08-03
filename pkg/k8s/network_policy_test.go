@@ -409,11 +409,13 @@ func (s *K8sSuite) TestParseNetworkPolicyNoSelectors(c *C) {
 		WithEndpointSelector(epSelector).
 		WithIngressRules([]api.IngressRule{
 			{
-				FromCIDRSet: []api.CIDRRule{
-					{
-						Cidr: api.CIDR("10.0.0.0/8"),
-						ExceptCIDRs: []api.CIDR{
-							"10.96.0.0/12",
+				IngressCommonRule: api.IngressCommonRule{
+					FromCIDRSet: []api.CIDRRule{
+						{
+							Cidr: api.CIDR("10.0.0.0/8"),
+							ExceptCIDRs: []api.CIDR{
+								"10.96.0.0/12",
+							},
 						},
 					},
 				},
