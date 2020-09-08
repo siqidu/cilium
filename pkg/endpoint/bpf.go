@@ -59,11 +59,6 @@ func (e *Endpoint) policyMapPath() string {
 	return bpf.LocalMapPath(policymap.MapName, e.ID)
 }
 
-// policyDenyMapPath returns the path to the policy map of endpoint.
-func (e *Endpoint) policyDenyMapPath() string {
-	return bpf.LocalMapPath(policymap.DenyMapName, e.ID)
-}
-
 // callsMapPath returns the path to cilium tail calls map of an endpoint.
 func (e *Endpoint) callsMapPath() string {
 	return e.owner.Datapath().Loader().CallsMapPath(e.ID)
@@ -113,13 +108,10 @@ func (e *Endpoint) writeInformationalComments(w io.Writer) error {
 		" * IPv4 address: %s\n"+
 		" * Identity: %d\n"+
 		" * PolicyMap: %s\n"+
-		" * PolicyDenyMap: %s\n"+
 		" * NodeMAC: %s\n"+
 		" */\n\n",
 		e.IPv4.String(),
-		e.getIdentity(),
-		bpf.LocalMapName(policymap.MapName, e.ID),
-		bpf.LocalMapName(policymap.DenyMapName, e.ID),
+		e.getIdentity(), bpf.LocalMapName(policymap.MapName, e.ID),
 		e.nodeMAC)
 
 	fw.WriteString("/*\n")

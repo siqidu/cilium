@@ -516,7 +516,6 @@ func (h *HeaderfileWriter) writeStaticData(fw io.Writer, e datapath.EndpointConf
 
 	epID := uint16(e.GetID())
 	fmt.Fprintf(fw, "#define POLICY_MAP %s\n", bpf.LocalMapName(policymap.MapName, epID))
-	fmt.Fprintf(fw, "#define POLICY_DENY_MAP %s\n", bpf.LocalMapName(policymap.DenyMapName, epID))
 	callsMapName := callsmap.MapName
 	if e.IsHost() {
 		callsMapName = callsmap.HostMapName

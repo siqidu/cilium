@@ -96,7 +96,6 @@ func (ms *MapSweeper) walk(path string, _ os.FileInfo, _ error) error {
 
 	mapPrefix := []string{
 		policymap.MapName,
-		policymap.DenyMapName,
 		ctmap.MapNameTCP6,
 		ctmap.MapNameTCP4,
 		ctmap.MapNameAny6,
