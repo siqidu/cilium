@@ -243,6 +243,7 @@ func (c ciliumCleanup) cleanupFuncs() []cleanupFunc {
 		funcs = append(funcs, cleanupNamedNetNSs)
 		funcs = append(funcs, unmountCgroup)
 		funcs = append(funcs, removeDirs)
+		funcs = append(funcs, revertOldCNIConf)
 		funcs = append(funcs, removeCNI)
 	}
 	return funcs
@@ -329,6 +330,23 @@ func removeCNI() error {
 		return nil
 	}
 	return err
+}
+
+func revertOldCNIConf() error {
+	return filepath.Walk(cniPath,
+		func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if !info.Mode().IsRegular() {
+				return nil
+			}
+			if !strings.HasSuffix(path, ".cilium_bak") {
+				return nil
+			}
+			origFileName := strings.TrimSuffix(path, ".cilium_bak")
+			return os.Rename(path, origFileName)
+		})
 }
 
 func unmountCgroup() error {

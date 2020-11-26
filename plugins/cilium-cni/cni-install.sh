@@ -169,6 +169,15 @@ if [ ! -d $(dirname $CILIUM_CNI_CONF) ]; then
 	mkdir -p $(dirname $CILIUM_CNI_CONF)
 fi
 
+# Make sure only Cilium is used to setup an application pod. See GH-14128.
+find "$(dirname ${CILIUM_CNI_CONF})" \
+   -type f \
+   \( -name '*.conf' \
+   -or -name '*.conflist' \
+   \) \
+   -not -name '*.cilium_bak' \
+   -exec mv {} {}.cilium_bak \;
+
 mv ${CNI_CONF_NAME} ${CILIUM_CNI_CONF}
 
 # Allow switching between chaining and direct CNI mode by removing the
